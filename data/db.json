@@ -26,10 +26,39 @@
     }
   ],
   "contracts": [],
-  "tickets": [],
-  "projects": [],
+  "tickets": [
+    {
+      "id": "TK-002",
+      "customerId": 1772483063256,
+      "subject": "סיכום",
+      "category": "Technical Issue",
+      "priority": "high",
+      "status": "open",
+      "assignee": "",
+      "assigneeEmail": "",
+      "assigneePhone": "",
+      "description": "",
+      "update": "",
+      "created": "2026-03-03"
+    }
+  ],
+  "projects": [
+    {
+      "id": 1772536121881,
+      "name": "test 2",
+      "customerId": 1772483063256,
+      "start": "",
+      "end": "",
+      "slaId": null,
+      "status": "planning",
+      "progress": 0,
+      "budget": 0,
+      "includes": "",
+      "notes": ""
+    }
+  ],
   "slas": [],
-  "ticketCounter": 1,
+  "ticketCounter": 3,
   "settings": {
     "appName": "NewVision-Service",
     "tagline": "מערכת ניהול שירות",
@@ -51,5 +80,5 @@
     "logoEmoji": "⚡",
     "logoDataUrl": null
   },
-  "updatedAt": "2026-03-03T09:29:03.768Z"
+  "updatedAt": "2026-03-03T12:24:03.090Z"
 }
