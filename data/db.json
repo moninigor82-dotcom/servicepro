@@ -1,0 +1,55 @@
+{
+  "customers": [
+    {
+      "id": 1772483063256,
+      "name": "Test",
+      "contact": "test",
+      "role": "test",
+      "phone": "+972532272889",
+      "email": "igor@mcnewvision.com",
+      "city": "",
+      "industry": "Technology",
+      "status": "active",
+      "notes": ""
+    },
+    {
+      "id": 1772528660289,
+      "name": "ניסיון 1",
+      "contact": "",
+      "role": "",
+      "phone": "997662377",
+      "email": "igor@mcnewvision.com",
+      "city": "כפר סבא",
+      "industry": "Technology",
+      "status": "active",
+      "notes": ""
+    }
+  ],
+  "contracts": [],
+  "tickets": [],
+  "projects": [],
+  "slas": [],
+  "ticketCounter": 1,
+  "settings": {
+    "appName": "NewVision-Service",
+    "tagline": "מערכת ניהול שירות",
+    "company": "M.C NewVision",
+    "supportPhone": "097662377",
+    "website": "https://mcnewvision.com/en/home-page/",
+    "fromEmail": "Support@mcnewvision.com",
+    "fromName": "NewVision-Service",
+    "replyEmail": "Support@mcnewvision.com",
+    "ccEmail": "Orna@mcnewvision.com",
+    "techEmails": "emmanuel@mcnewvision.com, idan@mcnewvision.com",
+    "alertContract30": true,
+    "alertContract7": true,
+    "alertTicketOpen": true,
+    "alertTicketNew": true,
+    "alertProjectEnd": true,
+    "alertCritical": true,
+    "signature": "SERVICEPRO-NEWVISION\nsupport@company.com | 03-0000000\nhttps://support.company.com\n\nThis email was sent automatically. Please do not reply directly.",
+    "logoEmoji": "⚡",
+    "logoDataUrl": null
+  },
+  "updatedAt": "2026-03-03T09:29:03.768Z"
+}
