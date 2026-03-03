@@ -250,6 +250,17 @@
   .priority-low { color: var(--green); font-size: 14px; }
 
   /* ===== MODAL ===== */
+  /* Draggable modals */
+  .modal-overlay .modal {
+    position: relative;
+    cursor: default;
+  }
+  .modal-drag-handle {
+    cursor: grab;
+    user-select: none;
+  }
+  .modal-drag-handle:active { cursor: grabbing; }
+
   .modal-overlay {
     position: fixed; inset:0;
     background: rgba(0,0,0,.76);
@@ -1111,7 +1122,13 @@ function doGet(e) {
     <div class="form-grid">
       <div class="form-group full">
         <label>Customer *</label>
-        <select id="t-customer" onchange="onTicketCustomerChange(this.value)"><option value="">Select customer...</option></select>
+        <select id="t-customer" onchange="onTicketCustomerChange(this.value)"><option value="">Select customer...</option><option value="__manual__">➕ Enter manually (not in list)</option></select>
+        <div id="t-manual-wrap" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;">MANUAL CUSTOMER DETAILS</div>
+          <input id="t-manual-name" type="text" placeholder="Company / Customer name *" style="width:100%;margin-bottom:6px;">
+          <input id="t-manual-phone" type="text" placeholder="Phone (optional)" style="width:100%;margin-bottom:6px;">
+          <input id="t-manual-email" type="email" placeholder="Email (optional)" style="width:100%;">
+        </div>
       </div>
       <div class="form-group full"><label>Ticket Subject *</label><input id="t-subject" type="text" placeholder="Brief description of the issue"></div>
       <div class="form-group"><label>Category</label>
@@ -1626,7 +1643,13 @@ function saveContract() {
 }
 
 function saveTicket() {
-  const cid = document.getElementById('t-customer').value;
+  const cidRaw = document.getElementById('t-customer').value;
+  const isManual = cidRaw === '__manual__';
+  const cid = isManual ? null : cidRaw;
+  if (isManual) {
+    const manualName = document.getElementById('t-manual-name') ? document.getElementById('t-manual-name').value.trim() : '';
+    if (!manualName) return alert('Please enter a customer name');
+  }
   const subj = document.getElementById('t-subject').value.trim();
   if(!cid||!subj) return alert('Customer and subject are required');
   const today = new Date().toISOString().split('T')[0];
@@ -1925,6 +1948,12 @@ function updateBadges() {
 
 // ===== TICKET CUSTOMER AUTO-FILL =====
 function onTicketCustomerChange(cid) {
+  var mw = document.getElementById('t-manual-wrap');
+  if (mw) mw.style.display = (cid === '__manual__') ? 'block' : 'none';
+  if (cid === '__manual__') {
+    document.getElementById('t-customer-card').style.display = 'none';
+    return;
+  }
   const card = document.getElementById('t-customer-card');
   if(!cid) { card.style.display='none'; return; }
   const c = customers.find(x=>x.id==cid);
@@ -3186,6 +3215,51 @@ setTimeout(()=>{
     if (bell) { bell.style.borderColor='var(--red)'; bell.style.color='var(--red)'; }
   }
 }, 200);
+
+// ===== DRAGGABLE MODALS =====
+function makeDraggable(modal) {
+  var handle = modal.querySelector('.modal-drag-handle, .modal-title');
+  if (!handle) return;
+  var isDragging = false, startX, startY, startLeft, startTop;
+  var box = modal.querySelector('.modal') || modal.firstElementChild;
+  if (!box) return;
+  box.style.position = 'relative';
+  handle.style.cursor = 'grab';
+  handle.addEventListener('mousedown', function(e) {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    var rect = box.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+    box.style.position = 'fixed';
+    box.style.left = startLeft + 'px';
+    box.style.top = startTop + 'px';
+    box.style.margin = '0';
+    handle.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - startX;
+    var dy = e.clientY - startY;
+    box.style.left = (startLeft + dx) + 'px';
+    box.style.top = (startTop + dy) + 'px';
+  });
+  document.addEventListener('mouseup', function() {
+    if (isDragging) {
+      isDragging = false;
+      handle.style.cursor = 'grab';
+    }
+  });
+}
+
+// Init draggable on all modals
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+  var box = overlay.querySelector('[class*="modal"]');
+  if (box) makeDraggable(overlay);
+});
+
 </script>
 </body>
 </html>

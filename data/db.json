@@ -1,19 +1,19 @@
 {
   "customers": [
     {
-      "id": 1772483063256,
-      "name": "Test",
-      "contact": "test",
-      "role": "test",
-      "phone": "+972532272889",
+      "id": 1772538443500,
+      "name": "ניסיון 1",
+      "contact": "",
+      "role": "",
+      "phone": "997662377",
       "email": "igor@mcnewvision.com",
-      "city": "",
+      "city": "כפר סבא",
       "industry": "Technology",
       "status": "active",
       "notes": ""
     },
     {
-      "id": 1772528660289,
+      "id": 1772539423556,
       "name": "ניסיון 1",
       "contact": "",
       "role": "",
@@ -26,50 +26,33 @@
     }
   ],
   "contracts": [],
-  "tickets": [
+  "tickets": [],
+  "projects": [],
+  "slas": [
     {
-      "id": "TK-002",
-      "customerId": 1772483063256,
-      "subject": "סיכום",
-      "category": "Technical Issue",
-      "priority": "high",
-      "status": "open",
-      "assignee": "",
-      "assigneeEmail": "",
-      "assigneePhone": "",
-      "description": "",
-      "update": "",
-      "created": "2026-03-03"
+      "id": 1772539515573,
+      "name": "test",
+      "response": "1 hour",
+      "resolution": "4 hours",
+      "uptime": "99.9%",
+      "support": "24/7",
+      "channels": "Phone + Email + Chat",
+      "tier": "platinum",
+      "includes": ""
     }
   ],
-  "projects": [
-    {
-      "id": 1772536121881,
-      "name": "test 2",
-      "customerId": 1772483063256,
-      "start": "",
-      "end": "",
-      "slaId": null,
-      "status": "planning",
-      "progress": 0,
-      "budget": 0,
-      "includes": "",
-      "notes": ""
-    }
-  ],
-  "slas": [],
-  "ticketCounter": 3,
+  "ticketCounter": 1,
   "settings": {
     "appName": "NewVision-Service",
     "tagline": "מערכת ניהול שירות",
     "company": "M.C NewVision",
     "supportPhone": "097662377",
-    "website": "https://mcnewvision.com/en/home-page/",
+    "website": "",
     "fromEmail": "Support@mcnewvision.com",
     "fromName": "NewVision-Service",
     "replyEmail": "Support@mcnewvision.com",
-    "ccEmail": "Orna@mcnewvision.com",
-    "techEmails": "emmanuel@mcnewvision.com, idan@mcnewvision.com",
+    "ccEmail": "",
+    "techEmails": "",
     "alertContract30": true,
     "alertContract7": true,
     "alertTicketOpen": true,
@@ -80,5 +63,5 @@
     "logoEmoji": "⚡",
     "logoDataUrl": null
   },
-  "updatedAt": "2026-03-03T12:24:03.090Z"
+  "updatedAt": "2026-03-03T14:20:19.246Z"
 }
