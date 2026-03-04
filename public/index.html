@@ -1914,6 +1914,7 @@ function renderTickets() {
       <td>${formatDate(t.created)}</td>
       <td>${slaHtml}</td>
       <td><div class="action-btns">
+        <button class="btn btn-secondary btn-sm" title="Preview / Send email" onclick="previewExistingTicket('${t.id}')" style="color:var(--accent);border-color:rgba(79,142,247,.4)">👁</button>
         <button class="btn btn-secondary btn-sm" onclick="openModal('ticket-modal','${t.id}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteTicket('${t.id}')">🗑️</button>
       </div></td>
@@ -2120,6 +2121,20 @@ function downloadICS(ticketId, customerName, subject, phone, desc, dtStart, dtEn
   a.click(); URL.revokeObjectURL(url);
 }
 
+function previewExistingTicket(ticketId) {
+  const t = tickets.find(x=>x.id==ticketId);
+  if(!t) return;
+  const c = customers.find(x=>x.id==t.customerId);
+  if(!c) { showToast('Customer not found', 'error'); return; }
+  let html = '';
+  html += buildTicketEmailToCustomer(t, c);
+  html += buildTicketEmailToTech(t, c);
+  html += buildCalendarInvite(t, c);
+  document.getElementById('email-preview-content').innerHTML = html;
+  document.getElementById('email-preview-modal').classList.add('open');
+  window._pendingTicketData = null; // existing ticket — don't re-save
+}
+
 function previewTicketEmail() {
   const cid = document.getElementById('t-customer').value;
   const subj = document.getElementById('t-subject').value.trim();
@@ -2157,10 +2172,8 @@ function previewTicketEmail() {
 
 function sendEmailsAndSave() {
   closeModal('email-preview-modal');
-  // Re-open ticket modal briefly just to call saveTicket
   if(window._pendingTicketData) {
     const { t } = window._pendingTicketData;
-    // Directly push the ticket
     const today = new Date().toISOString().split('T')[0];
     const obj = {
       id: `TK-${String(ticketCounter++).padStart(3,'0')}`,
@@ -2173,8 +2186,12 @@ function sendEmailsAndSave() {
     };
     tickets.push(obj);
     renderTickets(); renderDashboard(); updateBadges(); renderNotifPanel();
-    showToast(`✅ Ticket ${obj.id} saved — ${document.getElementById('t-notify-customer').checked||document.getElementById('t-notify-tech').checked?'notifications sent':'created successfully'}`);
+    saveToLocalStorage(); saveToServer();
+    showToast(`✅ Ticket ${obj.id} saved successfully`);
     window._pendingTicketData = null;
+  } else {
+    // Existing ticket — just close and show toast
+    showToast('✅ Email preview shown — ticket already saved');
   }
 }
 
