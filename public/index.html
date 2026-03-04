@@ -1601,6 +1601,10 @@ function populateCustomerSelects() {
     const val = sel.value;
     sel.innerHTML = '<option value="">Select customer...</option>';
     customers.forEach(c=>{ sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+    // Add manual entry option only for ticket modal
+    if(id === 't-customer') {
+      sel.innerHTML += '<option value="__manual__">➕ New customer (not in list)</option>';
+    }
     if(val) sel.value = val;
   });
 }
