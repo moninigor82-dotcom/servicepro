@@ -966,10 +966,17 @@
             <input id="set-cc-email" type="email" placeholder="manager@yourcompany.co.il">
             <small style="color:var(--text2);font-size:11px;margin-top:4px;">Receives a copy of every outgoing email</small>
           </div>
-          <div class="form-group full">
-            <label>📮 Technical Team Emails (comma separated)</label>
-            <input id="set-tech-emails" type="text" placeholder="tech1@company.co.il, tech2@company.co.il, manager@company.co.il">
-            <small style="color:var(--text2);font-size:11px;margin-top:4px;">These addresses appear when selecting technician in tickets</small>
+        </div>
+
+        <!-- Technician Manager -->
+        <div style="margin-top:20px;padding:18px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;">
+          <div style="font-size:14px;font-weight:700;margin-bottom:14px;">👷 Technician List</div>
+          <div id="tech-list-container" style="margin-bottom:12px;display:flex;flex-direction:column;gap:8px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input id="new-tech-name" type="text" placeholder="Name" style="flex:1;">
+            <input id="new-tech-email" type="email" placeholder="Email" style="flex:1;">
+            <input id="new-tech-phone" type="text" placeholder="Phone" style="width:130px;">
+            <button class="btn btn-primary btn-sm" onclick="addTechnician()">+ Add</button>
           </div>
         </div>
 
@@ -1650,6 +1657,7 @@ function showPage(id) {
   if(id==='alerts') renderAlerts();
   if(id==='settings') {
     loadSettingsToForm();
+    renderTechList();
     gsLoadConfig();
     const urlEl = document.getElementById('gs-webhook-url');
     const intEl = document.getElementById('gs-auto-interval');
@@ -3078,7 +3086,7 @@ function exportBackup() {
     _app: 'SERVICEPRO-NEWVISION',
     _exportedAt: new Date().toISOString(),
     customers, contracts, tickets, projects, slas,
-    ticketCounter,
+    ticketCounter, ticketHistory, technicians,
     settings: appSettings
   };
   const json = JSON.stringify(data, null, 2);
@@ -3116,6 +3124,7 @@ function importBackup(event) {
       if (data.projects) projects = data.projects;
       if (data.slas) slas = data.slas;
       if (data.ticketCounter) ticketCounter = data.ticketCounter;
+      if (data.technicians?.length) { technicians = data.technicians; saveTechnicians(); }
       if (data.settings) {
         Object.assign(appSettings, data.settings);
         applySettingsToUI();
@@ -3490,6 +3499,121 @@ function quickChangeStatus(ticketId, newStatus) {
   showToast(`✅ ${ticketId}: ${newStatus.replace('_',' ')}`);
 }
 
+// ===== TECHNICIAN MANAGEMENT =====
+let technicians = [
+  { name: 'Alon Baruch', email: '', phone: '' },
+  { name: 'Maya Katz', email: '', phone: '' },
+  { name: 'Yinon Ochion', email: '', phone: '' },
+  { name: 'Shira Ben David', email: '', phone: '' },
+  { name: 'Ron Gabay', email: '', phone: '' },
+];
+
+function renderTechList() {
+  const container = document.getElementById('tech-list-container');
+  if(!container) return;
+  if(!technicians.length) {
+    container.innerHTML = '<div style="color:var(--text2);font-size:13px;">No technicians added yet</div>';
+    return;
+  }
+  container.innerHTML = technicians.map((t,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+      <span style="font-size:18px;">👤</span>
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:13px;">${t.name}</div>
+        <div style="font-size:11px;color:var(--text2);">${t.email||'No email'} ${t.phone?'· '+t.phone:''}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" style="padding:5px 10px;font-size:12px;" onclick="removeTechnician(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function addTechnician() {
+  const name = document.getElementById('new-tech-name')?.value.trim();
+  const email = document.getElementById('new-tech-email')?.value.trim();
+  const phone = document.getElementById('new-tech-phone')?.value.trim();
+  if(!name) { showToast('Please enter a name', 'error'); return; }
+  if(technicians.find(t=>t.name===name)) { showToast('Technician already exists', 'error'); return; }
+  technicians.push({ name, email, phone });
+  document.getElementById('new-tech-name').value = '';
+  document.getElementById('new-tech-email').value = '';
+  document.getElementById('new-tech-phone').value = '';
+  renderTechList();
+  updateTechEmailsDropdown();
+  saveTechnicians();
+  showToast(`✅ ${name} added to technician list`);
+}
+
+function removeTechnician(index) {
+  const name = technicians[index]?.name;
+  if(!confirm(`Remove ${name} from the list?`)) return;
+  technicians.splice(index, 1);
+  renderTechList();
+  updateTechEmailsDropdown();
+  saveTechnicians();
+  showToast(`🗑 ${name} removed`);
+}
+
+function saveTechnicians() {
+  localStorage.setItem('servicepro_technicians', JSON.stringify(technicians));
+  saveToServer();
+}
+
+function loadTechnicians() {
+  try {
+    const raw = localStorage.getItem('servicepro_technicians');
+    if(raw) technicians = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function updateTechEmailsDropdown() {
+  const sel = document.getElementById('t-assignee-select');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Select technician...</option>';
+  technicians.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t.name;
+    opt.textContent = t.name + (t.email ? ` (${t.email})` : '');
+    opt.dataset.email = t.email || '';
+    opt.dataset.phone = t.phone || '';
+    sel.appendChild(opt);
+  });
+  const otherOpt = document.createElement('option');
+  otherOpt.value = '__other__';
+  otherOpt.textContent = '➕ Other / Type manually';
+  sel.appendChild(otherOpt);
+  if(current) sel.value = current;
+}
+
+function updateTechFilter() {
+  const sel = document.getElementById('ticket-filter-tech');
+  if(!sel) return;
+  const current = sel.value;
+  const techsInTickets = [...new Set(tickets.map(t=>t.assignee).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Technicians</option>' + techsInTickets.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(current) sel.value = current;
+}
+
+// Auto-fill email/phone when technician selected
+document.addEventListener('change', e => {
+  if(e.target.id === 't-assignee-select') {
+    const sel = e.target;
+    const opt = sel.options[sel.selectedIndex];
+    if(opt && opt.dataset.email !== undefined) {
+      const emailEl = document.getElementById('t-assignee-email');
+      const phoneEl = document.getElementById('t-assignee-phone');
+      const nameEl = document.getElementById('t-assignee');
+      if(sel.value === '__other__') {
+        if(nameEl) nameEl.value = '';
+        return;
+      }
+      if(emailEl && opt.dataset.email) emailEl.value = opt.dataset.email;
+      if(phoneEl && opt.dataset.phone) phoneEl.value = opt.dataset.phone;
+      if(nameEl) nameEl.value = sel.value;
+    }
+  }
+});
+
 // ===== THEME TOGGLE =====
 function toggleTheme() {
   const html = document.documentElement;
@@ -3720,6 +3844,7 @@ function globalSearch(q) {
 // ===== INIT =====
 (async () => {
   loadTheme();
+  loadTechnicians();
   await checkServer();
   loadSettingsFromLocalStorage();
   const serverLoaded = await loadFromServer();
