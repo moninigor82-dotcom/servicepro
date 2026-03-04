@@ -2254,34 +2254,7 @@ renderAlerts = function() {
   }).join('');
 };
 
-// Also update the saveTicket to support new fields
-const _origSaveTicket = saveTicket;
-saveTicket = function() {
-  const cid = document.getElementById('t-customer').value;
-  const subj = document.getElementById('t-subject').value.trim();
-  if(!cid||!subj) return alert('Customer and subject are required');
-  const today = new Date().toISOString().split('T')[0];
-  const id = editingId || `TK-${String(ticketCounter++).padStart(3,'0')}`;
-  const obj = {
-    id,
-    customerId: parseInt(cid),
-    subject: subj,
-    category: document.getElementById('t-category').value,
-    priority: document.getElementById('t-priority').value,
-    status: document.getElementById('t-status').value,
-    assignee: document.getElementById('t-assignee').value || document.getElementById('t-assignee-select').value,
-    assigneeEmail: document.getElementById('t-assignee-email')?.value||'',
-    assigneePhone: document.getElementById('t-assignee-phone')?.value||'',
-    description: document.getElementById('t-description').value,
-    update: document.getElementById('t-update').value,
-    created: editingId ? tickets.find(t=>t.id==editingId)?.created||today : today,
-  };
-  if(editingId) { const i = tickets.findIndex(t=>t.id==editingId); tickets[i]=obj; }
-  else tickets.push(obj);
-  closeModal('ticket-modal');
-  renderTickets(); renderDashboard(); updateBadges(); renderNotifPanel();
-  if(!editingId) showToast(`✅ Ticket ${obj.id} created successfully`);
-};
+
 
 function getAlerts() {
   const alerts = [];
