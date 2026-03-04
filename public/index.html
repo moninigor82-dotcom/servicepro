@@ -1716,7 +1716,9 @@ function saveTicket() {
     category: document.getElementById('t-category').value,
     priority: document.getElementById('t-priority').value,
     status: document.getElementById('t-status').value,
-    assignee: document.getElementById('t-assignee').value,
+    assignee: document.getElementById('t-assignee').value || document.getElementById('t-assignee-select').value,
+    assigneeEmail: document.getElementById('t-assignee-email')?.value||'',
+    assigneePhone: document.getElementById('t-assignee-phone')?.value||'',
     description: document.getElementById('t-description').value,
     update: document.getElementById('t-update').value,
     created: editingId ? tickets.find(t=>t.id==editingId)?.created||today : today,
@@ -1724,8 +1726,18 @@ function saveTicket() {
   if(editingId) { const i = tickets.findIndex(t=>t.id==editingId); tickets[i]=obj; }
   else tickets.push(obj);
   closeModal('ticket-modal');
-  renderTickets(); renderDashboard(); updateBadges();
-  if (!editingId) showToast(`✅ Ticket ${obj.id} created successfully`);
+  renderTickets(); renderDashboard(); updateBadges(); renderNotifPanel();
+  saveToLocalStorage(); saveToServer();
+  if (!editingId) {
+    const custName = getCustomerName(obj.customerId);
+    showToast(`✅ Ticket ${obj.id} created for ${custName}`);
+    // Show notification info about tech email
+    const notifTech = document.getElementById('t-notify-tech')?.checked;
+    const notifCustomer = document.getElementById('t-notify-customer')?.checked;
+    if(notifTech || notifCustomer) {
+      setTimeout(()=>showToast('📧 To send emails — use Preview button before saving'), 1500);
+    }
+  }
 }
 
 function saveProject() {
@@ -2396,6 +2408,9 @@ function renderCalendar() {
   contracts.forEach(c=>{
     if(c.start) addEvent(c.start, { label:`▶ ${getCustomerName(c.customerId)}`, cls:'contract-start' });
     if(c.end) addEvent(c.end, { label:`⛔ ${getCustomerName(c.customerId)}`, cls:'contract' });
+  });
+  tickets.filter(t=>t.created).forEach(t=>{
+    addEvent(t.created, { label:`🎫 ${t.id} ${getCustomerName(t.customerId)}`, cls:'contract-start' });
   });
 
   // Fill empty cells before month start
