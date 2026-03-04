@@ -1307,18 +1307,19 @@ let _saveTimer = null;
 
 async function checkServer() {
   try {
-    const res = await fetch('/api/info', { signal: AbortSignal.timeout(1500) });
+    const res = await fetch('/api/info', { signal: AbortSignal.timeout(3000) });
     const data = await res.json();
     serverAvailable = data.ok;
     const el = document.getElementById('server-status');
     if (el) { el.textContent = '🟢 Server Active'; el.style.color = 'var(--green)'; }
     showServerIPs(data.localIPs, data.port);
     return true;
-  } catch { 
-    serverAvailable = false;
+  } catch {
+    // On Railway the app IS the server — always try API
+    serverAvailable = true;
     const el = document.getElementById('server-status');
-    if (el) { el.textContent = '🔴 Not Active'; el.style.color = 'var(--red)'; }
-    return false;
+    if (el) { el.textContent = '🟢 Online'; el.style.color = 'var(--green)'; }
+    return true;
   }
 }
 
@@ -3325,7 +3326,7 @@ setTimeout(() => { initPanWrapper(); }, 400);
 (async () => {
   await checkServer();
   loadSettingsFromLocalStorage();
-  const serverLoaded = serverAvailable ? await loadFromServer() : false;
+  const serverLoaded = await loadFromServer();
   if (!serverLoaded) {
     const lsLoaded = loadFromLocalStorage();
     if (!lsLoaded) { seedData(); saveToLocalStorage(); }
