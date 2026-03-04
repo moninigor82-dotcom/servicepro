@@ -250,17 +250,6 @@
   .priority-low { color: var(--green); font-size: 14px; }
 
   /* ===== MODAL ===== */
-  /* Draggable modals */
-  .modal-overlay .modal {
-    position: relative;
-    cursor: default;
-  }
-  .modal-drag-handle {
-    cursor: grab;
-    user-select: none;
-  }
-  .modal-drag-handle:active { cursor: grabbing; }
-
   .modal-overlay {
     position: fixed; inset:0;
     background: rgba(0,0,0,.76);
@@ -530,7 +519,11 @@
   <div class="page active" id="page-dashboard">
     <div class="topbar">
       <div><h2>Dashboard</h2><p>Overview of service activity</p></div>
-      <button class="btn btn-primary" onclick="openModal('ticket-modal')">+ New Ticket</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-secondary btn-sm" id="pan-toggle-btn" onclick="togglePanMode()" title="Toggle pan mode (drag to move)" style="font-size:13px;">🖐 Pan Mode</button>
+        <button class="btn btn-secondary btn-sm" onclick="resetPan()" title="Reset view" style="font-size:13px;">⌖ Reset</button>
+        <button class="btn btn-primary" onclick="openModal('ticket-modal')">+ New Ticket</button>
+      </div>
     </div>
     <div class="stats-grid">
       <div class="stat-card blue">
@@ -842,7 +835,7 @@
         <div style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;">
           <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;">Preview — how the sender line will look</div>
           <div id="set-email-preview" style="font-size:13px;font-family:monospace;color:var(--text3);">
-            From: SERVICEPRO-NEWVISION &lt;noreply@yourcompany.com class="__cf_email__" data-cfemail="117f7e6374617d6851687e6463727e7c61707f683f727e3f787d">[email&#160;protected]</a>&gt;
+            From: SERVICEPRO-NEWVISION &lt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4927263b2c3925300930263c3b2a262439282730672a2624">[email&#160;protected]</a> class="__cf_email__" data-cfemail="117f7e6374617d6851687e6463727e7c61707f683f727e3f787d">[email&#160;protected]</a>&gt;
           </div>
         </div>
       </div>
@@ -1122,12 +1115,19 @@ function doGet(e) {
     <div class="form-grid">
       <div class="form-group full">
         <label>Customer *</label>
-        <select id="t-customer" onchange="onTicketCustomerChange(this.value)"><option value="">Select customer...</option><option value="__manual__">➕ Enter manually (not in list)</option></select>
-        <div id="t-manual-wrap" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;">
-          <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px;">MANUAL CUSTOMER DETAILS</div>
-          <input id="t-manual-name" type="text" placeholder="Company / Customer name *" style="width:100%;margin-bottom:6px;">
-          <input id="t-manual-phone" type="text" placeholder="Phone (optional)" style="width:100%;margin-bottom:6px;">
-          <input id="t-manual-email" type="email" placeholder="Email (optional)" style="width:100%;">
+        <select id="t-customer" onchange="onTicketCustomerChange(this.value)"><option value="">Select customer...</option><option value="__manual__">➕ New customer (not in list)</option></select>
+        <div id="t-manual-wrap" style="display:none;margin-top:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:12px;padding:16px;">
+          <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">➕ New Customer Details</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <input id="t-manual-name" type="text" placeholder="Company / Name *">
+            <input id="t-manual-contact" type="text" placeholder="Contact person">
+            <input id="t-manual-phone" type="text" placeholder="Phone">
+            <input id="t-manual-email" type="email" placeholder="Email">
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text3);margin-top:10px;">
+            <input type="checkbox" id="t-manual-save" style="width:14px;height:14px;accent-color:var(--accent);" checked>
+            Save as new customer in the system
+          </label>
         </div>
       </div>
       <div class="form-group full"><label>Ticket Subject *</label><input id="t-subject" type="text" placeholder="Brief description of the issue"></div>
@@ -1300,7 +1300,7 @@ function doGet(e) {
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ===== SERVER SYNC =====
 let serverAvailable = false;
 let _saveTimer = null;
@@ -1645,18 +1645,54 @@ function saveContract() {
 function saveTicket() {
   const cidRaw = document.getElementById('t-customer').value;
   const isManual = cidRaw === '__manual__';
-  const cid = isManual ? null : cidRaw;
-  if (isManual) {
-    const manualName = document.getElementById('t-manual-name') ? document.getElementById('t-manual-name').value.trim() : '';
-    if (!manualName) return alert('Please enter a customer name');
-  }
   const subj = document.getElementById('t-subject').value.trim();
-  if(!cid||!subj) return alert('Customer and subject are required');
+  if(!cidRaw) return alert('Please select a customer');
+  if(!subj) return alert('Ticket subject is required');
+
+  let resolvedCid = cidRaw;
+
+  if (isManual) {
+    const manualName = (document.getElementById('t-manual-name')?.value || '').trim();
+    if (!manualName) return alert('Please enter a customer name');
+    const shouldSave = document.getElementById('t-manual-save')?.checked;
+    if (shouldSave) {
+      // Create new customer
+      const newCust = {
+        id: Date.now(),
+        name: manualName,
+        contact: document.getElementById('t-manual-contact')?.value || '',
+        role: '',
+        phone: document.getElementById('t-manual-phone')?.value || '',
+        email: document.getElementById('t-manual-email')?.value || '',
+        city: '',
+        industry: 'Other',
+        status: 'active',
+        notes: 'Added via ticket form',
+      };
+      customers.push(newCust);
+      resolvedCid = newCust.id;
+      showToast(`✅ New customer "${manualName}" added to the system`);
+    } else {
+      // Create a temporary customer just for this ticket
+      const tmpCust = {
+        id: Date.now(),
+        name: manualName,
+        contact: document.getElementById('t-manual-contact')?.value || '',
+        role: '',
+        phone: document.getElementById('t-manual-phone')?.value || '',
+        email: document.getElementById('t-manual-email')?.value || '',
+        city: '', industry: 'Other', status: 'active', notes: '',
+      };
+      customers.push(tmpCust);
+      resolvedCid = tmpCust.id;
+    }
+  }
+
   const today = new Date().toISOString().split('T')[0];
   const id = editingId || `TK-${String(ticketCounter++).padStart(3,'0')}`;
   const obj = {
     id,
-    customerId: parseInt(cid),
+    customerId: isManual ? resolvedCid : parseInt(cidRaw),
     subject: subj,
     category: document.getElementById('t-category').value,
     priority: document.getElementById('t-priority').value,
@@ -1670,6 +1706,7 @@ function saveTicket() {
   else tickets.push(obj);
   closeModal('ticket-modal');
   renderTickets(); renderDashboard(); updateBadges();
+  if (!editingId) showToast(`✅ Ticket ${obj.id} created successfully`);
 }
 
 function saveProject() {
@@ -1947,13 +1984,7 @@ function updateBadges() {
 
 
 // ===== TICKET CUSTOMER AUTO-FILL =====
-function onTicketCustomerChange(cid) {
-  var mw = document.getElementById('t-manual-wrap');
-  if (mw) mw.style.display = (cid === '__manual__') ? 'block' : 'none';
-  if (cid === '__manual__') {
-    document.getElementById('t-customer-card').style.display = 'none';
-    return;
-  }
+function onTicketCustomerChange(cid) {var mw=document.getElementById("t-manual-wrap");if(mw)mw.style.display=(cid==="__manual__")?"block":"none";if(cid==="__manual__"){document.getElementById("t-customer-card").style.display="none";return;}
   const card = document.getElementById('t-customer-card');
   if(!cid) { card.style.display='none'; return; }
   const c = customers.find(x=>x.id==cid);
@@ -3189,6 +3220,107 @@ setTimeout(() => {
   }
 }, 500);
 
+// ===== PAN MODE (Dashboard drag to move) =====
+let panMode = false;
+let panX = 0, panY = 0;
+let panStartX = 0, panStartY = 0;
+let panDragging = false;
+
+function togglePanMode() {
+  panMode = !panMode;
+  const btn = document.getElementById('pan-toggle-btn');
+  const dashboard = document.getElementById('page-dashboard');
+  if (panMode) {
+    btn.style.background = 'rgba(79,142,247,.25)';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    dashboard.style.cursor = 'grab';
+    dashboard.style.userSelect = 'none';
+    showToast('🖐 Pan mode ON — drag to move the page');
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    dashboard.style.cursor = '';
+    dashboard.style.userSelect = '';
+  }
+}
+
+function resetPan() {
+  panX = 0; panY = 0;
+  const inner = document.getElementById('dashboard-inner');
+  if (inner) inner.style.transform = 'translate(0px, 0px)';
+  showToast('⌖ View reset');
+}
+
+// Wrap dashboard content in pannable container
+function initPanWrapper() {
+  const dashboard = document.getElementById('page-dashboard');
+  if (!dashboard || document.getElementById('dashboard-inner')) return;
+  // Wrap all children except topbar in a div
+  const children = Array.from(dashboard.children);
+  const topbar = children[0]; // first child is topbar
+  const inner = document.createElement('div');
+  inner.id = 'dashboard-inner';
+  inner.style.cssText = 'transition: transform 0.05s linear; will-change: transform;';
+  children.slice(1).forEach(c => inner.appendChild(c));
+  dashboard.appendChild(inner);
+}
+
+document.addEventListener('mousedown', function(e) {
+  if (!panMode) return;
+  const dashboard = document.getElementById('page-dashboard');
+  if (!dashboard.contains(e.target)) return;
+  // Don't pan if clicking a button/input
+  if (e.target.closest('button, input, select, textarea, a')) return;
+  panDragging = true;
+  panStartX = e.clientX - panX;
+  panStartY = e.clientY - panY;
+  dashboard.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+
+document.addEventListener('mousemove', function(e) {
+  if (!panDragging) return;
+  panX = e.clientX - panStartX;
+  panY = e.clientY - panStartY;
+  const inner = document.getElementById('dashboard-inner');
+  if (inner) inner.style.transform = `translate(${panX}px, ${panY}px)`;
+});
+
+document.addEventListener('mouseup', function() {
+  if (panDragging) {
+    panDragging = false;
+    const dashboard = document.getElementById('page-dashboard');
+    if (dashboard) dashboard.style.cursor = panMode ? 'grab' : '';
+  }
+});
+
+// Touch support for pan
+document.addEventListener('touchstart', function(e) {
+  if (!panMode) return;
+  const dashboard = document.getElementById('page-dashboard');
+  if (!dashboard.contains(e.target)) return;
+  const touch = e.touches[0];
+  panDragging = true;
+  panStartX = touch.clientX - panX;
+  panStartY = touch.clientY - panY;
+}, {passive: true});
+
+document.addEventListener('touchmove', function(e) {
+  if (!panDragging) return;
+  const touch = e.touches[0];
+  panX = touch.clientX - panStartX;
+  panY = touch.clientY - panStartY;
+  const inner = document.getElementById('dashboard-inner');
+  if (inner) inner.style.transform = `translate(${panX}px, ${panY}px)`;
+}, {passive: true});
+
+document.addEventListener('touchend', function() { panDragging = false; });
+
+// Init pan wrapper on load
+setTimeout(() => { initPanWrapper(); }, 400);
+
 // ===== INIT =====
 (async () => {
   await checkServer();
@@ -3215,51 +3347,4 @@ setTimeout(()=>{
     if (bell) { bell.style.borderColor='var(--red)'; bell.style.color='var(--red)'; }
   }
 }, 200);
-
-// ===== DRAGGABLE MODALS =====
-function makeDraggable(modal) {
-  var handle = modal.querySelector('.modal-drag-handle, .modal-title');
-  if (!handle) return;
-  var isDragging = false, startX, startY, startLeft, startTop;
-  var box = modal.querySelector('.modal') || modal.firstElementChild;
-  if (!box) return;
-  box.style.position = 'relative';
-  handle.style.cursor = 'grab';
-  handle.addEventListener('mousedown', function(e) {
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    var rect = box.getBoundingClientRect();
-    startLeft = rect.left;
-    startTop = rect.top;
-    box.style.position = 'fixed';
-    box.style.left = startLeft + 'px';
-    box.style.top = startTop + 'px';
-    box.style.margin = '0';
-    handle.style.cursor = 'grabbing';
-    e.preventDefault();
-  });
-  document.addEventListener('mousemove', function(e) {
-    if (!isDragging) return;
-    var dx = e.clientX - startX;
-    var dy = e.clientY - startY;
-    box.style.left = (startLeft + dx) + 'px';
-    box.style.top = (startTop + dy) + 'px';
-  });
-  document.addEventListener('mouseup', function() {
-    if (isDragging) {
-      isDragging = false;
-      handle.style.cursor = 'grab';
-    }
-  });
-}
-
-// Init draggable on all modals
-document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
-  var box = overlay.querySelector('[class*="modal"]');
-  if (box) makeDraggable(overlay);
-});
-
-</script>
-</body>
-</html>
+function initDrag(){document.querySelectorAll(".modal-overlay").forEach(function(ov){var b=ov.firstElementChild;if(!b)return;var d=false,sx,sy,ol,ot;b.addEventListener("mousedown",function(e){if(["BUTTON","INPUT","SELECT","TEXTAREA"].includes(e.target.tagName))return;d=true;var r=b.getBoundingClientRect();b.style.cssText+=";position:fixed;margin:0;left:"+r.left+"px;top:"+r.top+"px";ol=r.left;ot=r.top;sx=e.clientX;sy=e.clientY;e.preventDefault();});document.addEve
