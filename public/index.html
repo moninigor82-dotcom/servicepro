@@ -3318,4 +3318,30 @@ setTimeout(()=>{
     if (bell) { bell.style.borderColor='var(--red)'; bell.style.color='var(--red)'; }
   }
 }, 200);
-function initDrag(){document.querySelectorAll(".modal-overlay").forEach(function(ov){var b=ov.firstElementChild;if(!b)return;var d=false,sx,sy,ol,ot;b.addEventListener("mousedown",function(e){if(["BUTTON","INPUT","SELECT","TEXTAREA"].includes(e.target.tagName))return;d=true;var r=b.getBoundingClientRect();b.style.cssText+=";position:fixed;margin:0;left:"+r.left+"px;top:"+r.top+"px";ol=r.left;ot=r.top;sx=e.clientX;sy=e.clientY;e.preventDefault();});document.addEve
+function initDrag(){
+  document.querySelectorAll('.modal-overlay').forEach(function(overlay){
+    var box = overlay.querySelector('.modal') || overlay.firstElementChild;
+    if(!box) return;
+    var isDragging=false, startX, startY, startLeft, startTop;
+    var handle = box.querySelector('.modal-title') || box;
+    handle.style.cursor='grab';
+    handle.addEventListener('mousedown',function(e){
+      if(['BUTTON','INPUT','SELECT','TEXTAREA','A'].includes(e.target.tagName)) return;
+      isDragging=true;
+      var r=box.getBoundingClientRect();
+      box.style.cssText+=';position:fixed;margin:0;left:'+r.left+'px;top:'+r.top+'px';
+      startLeft=r.left; startTop=r.top;
+      startX=e.clientX; startY=e.clientY;
+      handle.style.cursor='grabbing';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove',function(e){
+      if(!isDragging) return;
+      box.style.left=(startLeft+e.clientX-startX)+'px';
+      box.style.top=(startTop+e.clientY-startY)+'px';
+    });
+    document.addEventListener('mouseup',function(){
+      if(isDragging){ isDragging=false; handle.style.cursor='grab'; }
+    });
+  });
+}
