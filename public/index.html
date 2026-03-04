@@ -1301,8 +1301,6 @@ function doGet(e) {
       <div class="form-group"><label>Assigned Technician</label>
         <select id="t-assignee-select" onchange="document.getElementById('t-assignee').value=this.value">
           <option value="">Select technician...</option>
-          <option>Alon Baruch</option><option>Maya Katz</option><option>Yinon Ochion</option>
-          <option>Shira Ben David</option><option>Ron Gabay</option><option>Other</option>
         </select>
       </div>
       <div class="form-group"><label>Technician Name (manual)</label><input id="t-assignee" type="text" placeholder="Or type a name..."></div>
@@ -1575,11 +1573,11 @@ function seedData() {
   ];
 
   tickets = [
-    { id: 'TK-001', customerId: 1, subject: 'Application server not responding', category: 'Technical Issue', priority: 'critical', status: 'open', assignee: 'Alon Baruch', description: 'Production server has not been responding since morning', update: '', created: fmt(today) },
-    { id: 'TK-002', customerId: 2, subject: 'Permission change request', category: 'Change Request', priority: 'low', status: 'in_progress', assignee: 'Maya Katz', description: 'Permission change needed for new user', update: 'Request sent for approval', created: fmt(subDays(today,2)) },
-    { id: 'TK-003', customerId: 3, subject: 'Slow database performance', category: 'Performance Issue', priority: 'high', status: 'in_progress', assignee: 'Yinon Ochion', description: 'Database queries are running slowly', update: 'Analysis in progress', created: fmt(subDays(today,1)) },
-    { id: 'TK-004', customerId: 4, subject: 'Question about backups', category: 'Question', priority: 'low', status: 'resolved', assignee: 'Shira Ben David', description: 'Customer asked about backup policy', update: 'Answered successfully', created: fmt(subDays(today,5)) },
-    { id: 'TK-005', customerId: 5, subject: 'Urgent security incident', category: 'Security', priority: 'critical', status: 'open', assignee: 'Ron Gabay', description: 'Unauthorized access attempt detected', update: '', created: fmt(today) },
+    { id: 'TK-001', customerId: 1, subject: 'Application server not responding', category: 'Technical Issue', priority: 'critical', status: 'open', assignee: '', description: 'Production server has not been responding since morning', update: '', created: fmt(today) },
+    { id: 'TK-002', customerId: 2, subject: 'Permission change request', category: 'Change Request', priority: 'low', status: 'in_progress', assignee: '', description: 'Permission change needed for new user', update: 'Request sent for approval', created: fmt(subDays(today,2)) },
+    { id: 'TK-003', customerId: 3, subject: 'Slow database performance', category: 'Performance Issue', priority: 'high', status: 'in_progress', assignee: '', description: 'Database queries are running slowly', update: 'Analysis in progress', created: fmt(subDays(today,1)) },
+    { id: 'TK-004', customerId: 4, subject: 'Question about backups', category: 'Question', priority: 'low', status: 'resolved', assignee: '', description: 'Customer asked about backup policy', update: 'Answered successfully', created: fmt(subDays(today,5)) },
+    { id: 'TK-005', customerId: 5, subject: 'Urgent security incident', category: 'Security', priority: 'critical', status: 'open', assignee: '', description: 'Unauthorized access attempt detected', update: '', created: fmt(today) },
     { id: 'TK-006', customerId: 1, subject: 'Infrastructure update', category: 'Change Request', priority: 'medium', status: 'open', assignee: '', description: 'Version update for application servers', update: '', created: fmt(subDays(today,3)) },
   ];
   ticketCounter = 7;
@@ -2958,7 +2956,7 @@ function updateTechEmailsDropdown() {
   if(!sel) return;
   const current = sel.value;
   // Keep base options
-  sel.innerHTML = '<option value="">Select technician...</option><option>Alon Baruch</option><option>Maya Katz</option><option>Yinon Ochion</option><option>Shira Ben David</option><option>Ron Gabay</option><option>Other</option>';
+  sel.innerHTML = '<option value="">Select technician...</option>';
   // Add from settings
   if(appSettings.techEmails) {
     const emails = appSettings.techEmails.split(',').map(e=>e.trim()).filter(Boolean);
@@ -3500,13 +3498,7 @@ function quickChangeStatus(ticketId, newStatus) {
 }
 
 // ===== TECHNICIAN MANAGEMENT =====
-let technicians = [
-  { name: 'Alon Baruch', email: '', phone: '' },
-  { name: 'Maya Katz', email: '', phone: '' },
-  { name: 'Yinon Ochion', email: '', phone: '' },
-  { name: 'Shira Ben David', email: '', phone: '' },
-  { name: 'Ron Gabay', email: '', phone: '' },
-];
+let technicians = [];
 
 function renderTechList() {
   const container = document.getElementById('tech-list-container');
