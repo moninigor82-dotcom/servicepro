@@ -1482,16 +1482,30 @@ function tierColor(t) {
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
+  const pg = document.getElementById('page-'+id);
+  if(pg) pg.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>{
-    if(n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
+    if(n.getAttribute('onclick')?.includes(`'${id}'`)) n.classList.add('active');
   });
-  if(id==='dashboard') renderDashboard();
+  if(id==='dashboard') { renderDashboard(); addDashExport(); }
   if(id==='customers') renderCustomers();
   if(id==='contracts') renderContracts();
   if(id==='tickets') renderTickets();
   if(id==='projects') renderProjects();
   if(id==='sla') renderSLA();
+  if(id==='calendar') renderCalendar();
+  if(id==='alerts') renderAlerts();
+  if(id==='settings') {
+    loadSettingsToForm();
+    gsLoadConfig();
+    const urlEl = document.getElementById('gs-webhook-url');
+    const intEl = document.getElementById('gs-auto-interval');
+    const dirEl = document.getElementById('gs-sync-direction');
+    if(urlEl) urlEl.value = gsConfig.webhookUrl || '';
+    if(intEl) intEl.value = gsConfig.autoInterval || 15;
+    if(dirEl) dirEl.value = gsConfig.syncDirection || 'both';
+    gsUpdateBadge();
+  }
 }
 
 // ===== MODALS =====
@@ -2557,25 +2571,6 @@ function addDashExport() {
   }
 }
 
-// ===== OVERRIDE showPage to support new pages =====
-const _origShowPage = showPage;
-showPage = function(id) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const pg = document.getElementById('page-'+id);
-  if(pg) pg.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(n=>{
-    if(n.getAttribute('onclick')?.includes(`'${id}'`)) n.classList.add('active');
-  });
-  if(id==='dashboard') { renderDashboard(); addDashExport(); }
-  if(id==='customers') renderCustomers();
-  if(id==='contracts') renderContracts();
-  if(id==='tickets') renderTickets();
-  if(id==='projects') renderProjects();
-  if(id==='sla') renderSLA();
-  if(id==='calendar') renderCalendar();
-  if(id==='alerts') renderAlerts();
-};
 
 
 // ===== LOGO UPLOAD =====
@@ -2792,15 +2787,6 @@ document.addEventListener('input', e=>{
   if(e.target.id==='set-from-email'||e.target.id==='set-from-name') updateSettingsPreviews();
   if(e.target.id==='set-signature') updateSettingsPreviews();
 });
-
-// Load settings page when opened
-const __origShowPage = showPage;
-showPage = function(id) {
-  __origShowPage(id);
-  if(id==='settings') {
-    loadSettingsToForm();
-  }
-};
 
 // Init settings UI on load
 setTimeout(()=>{ applySettingsToUI(); }, 150);
@@ -3195,22 +3181,6 @@ function copyAppsScript() {
     showToast('✅ Code copied');
   });
 }
-
-// Load GS config when settings page opens
-const ___origShowPage = showPage;
-showPage = function(id) {
-  ___origShowPage(id);
-  if (id === 'settings') {
-    gsLoadConfig();
-    const urlEl = document.getElementById('gs-webhook-url');
-    const intEl = document.getElementById('gs-auto-interval');
-    const dirEl = document.getElementById('gs-sync-direction');
-    if (urlEl) urlEl.value = gsConfig.webhookUrl || '';
-    if (intEl) intEl.value = gsConfig.autoInterval || 15;
-    if (dirEl) dirEl.value = gsConfig.syncDirection || 'both';
-    gsUpdateBadge();
-  }
-};
 
 // Init GS on load
 setTimeout(() => {
