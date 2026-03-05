@@ -58,43 +58,37 @@
 
   /* ===== LOGO ===== */
   .logo {
-    padding: 22px 18px 18px;
+    padding: 14px 12px 10px;
     border-bottom: 1px solid var(--border);
     margin-bottom: 6px;
     background: linear-gradient(135deg, rgba(79,142,247,.07) 0%, transparent 100%);
   }
   .logo-mark {
-    display: flex; align-items: center; gap: 11px; margin-bottom: 7px;
+    display: flex; flex-direction: column; align-items: center; margin-bottom: 4px;
   }
   .logo-icon-wrap {
-    width: 58px; height: 58px; border-radius: 14px; flex-shrink: 0;
+    width: 216px; height: 108px; border-radius: 10px; flex-shrink: 0;
     background: white;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 18px rgba(79,142,247,.38);
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
     overflow: hidden; cursor: pointer; position: relative;
   }
   .logo-icon-wrap img {
-    width: 100%; height: 100%; object-fit: cover; border-radius: 14px;
+    width: 100%; height: 100%; object-fit: contain; padding: 8px;
   }
   .logo-icon-wrap .logo-icon-default {
-    font-size: 30px;
+    font-size: 36px;
   }
   .logo-icon-wrap:hover::after {
     content: '📷';
     position: absolute; inset: 0;
-    background: rgba(0,0,0,.55);
+    background: rgba(0,0,0,.5);
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px; border-radius: 12px;
+    font-size: 20px; border-radius: 10px;
   }
   #logo-upload-input { display: none; }
-  .logo h1 {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 15px; font-weight: 700;
-    letter-spacing: .3px; line-height: 1.25;
-  }
-  .logo h1 .logo-main { color: var(--text); display: block; font-size: 15px; }
-  .logo h1 .logo-sub { color: var(--accent); display: block; font-size: 12px; font-weight: 600; opacity: .9; }
-  .logo-tagline { font-size: 11.5px; color: var(--text2); margin-top: 4px; letter-spacing: .2px; }
+  .logo h1 { display: none; }
+  .logo-tagline { font-size: 11px; color: var(--text2); margin-top: 6px; letter-spacing: .2px; text-align: center; }
 
   /* ===== SIDEBAR NAV ===== */
   .nav-item {
@@ -596,6 +590,45 @@
   </div>
 </div>
 
+<!-- IMPORT PREVIEW MODAL -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal" style="max-width:800px;">
+    <div class="modal-header">
+      <span class="modal-title">📥 Import Customers</span>
+      <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
+    </div>
+    <div id="import-step-1">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 Column Mapping</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">Match your Excel columns to the app fields:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="import-mapping-grid"></div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="import-skip-header" checked style="accent-color:var(--accent);">
+          Skip first row (header row)
+        </label>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="import-skip-duplicates" checked style="accent-color:var(--accent);">
+          Skip duplicates (by company name)
+        </label>
+      </div>
+    </div>
+    <!-- Preview table -->
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px;">👁 Preview <span id="import-count" style="color:var(--accent);"></span></div>
+    <div class="table-wrap" style="max-height:280px;overflow-y:auto;margin-bottom:16px;">
+      <table><thead><tr id="import-preview-head"></tr></thead><tbody id="import-preview-body"></tbody></table>
+    </div>
+    <div id="import-result-msg" style="display:none;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('import-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmImport()" id="import-confirm-btn">✅ Import All</button>
+    </div>
+  </div>
+</div>
+
 <!-- TICKET VIEW MODAL (for technicians) -->
 <div class="modal-overlay" id="ticket-view-modal">
   <div class="modal" style="max-width:620px;">
@@ -786,8 +819,12 @@
   <div class="page" id="page-customers">
     <div class="topbar">
       <div><h2>Customer Management</h2><p>All customers in the system</p></div>
-      <button class="btn btn-primary" onclick="openModal('customer-modal')">+ New Customer</button>
-      <button class="btn btn-secondary btn-sm export-csv-btn" onclick="exportCSV('customers')">⬇ CSV</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file-input').click()" style="border-color:rgba(18,217,146,.4);color:var(--green);">📥 Import Excel/CSV</button>
+        <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importCustomersFile(event)">
+        <button class="btn btn-primary" onclick="openModal('customer-modal')">+ New Customer</button>
+        <button class="btn btn-secondary btn-sm export-csv-btn" onclick="exportCSV('customers')">⬇ CSV</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -1178,13 +1215,7 @@
       </div>
     </div>
 
-    <!-- Google Sheets Integration -->
-    <div class="card" style="margin-bottom:20px;">
-      <div class="card-header">
-        <span class="card-title">📊 Google Sheets Connection</span>
-        <span id="gs-connection-badge" style="font-size:12px;color:var(--text2);">Not Connected</span>
-      </div>
-      <div style="padding:24px;">
+    <!-- Google Sheets Integration -->\n    <div class="card" style="margin-bottom:20px;">\n      <div class="card-header">\n        <span class="card-title">📊 Google Sheets Connection</span>\n        <span id="gs-connection-badge" style="font-size:12px;color:var(--text2);">Not Connected</span>\n      </div>\n      <div style="padding:24px;">\n\n        <!-- QUICK IMPORT from Google Sheets -->\n        <div style="background:linear-gradient(135deg,rgba(18,217,146,.08),rgba(79,142,247,.08));border:1px solid rgba(18,217,146,.25);border-radius:14px;padding:18px;margin-bottom:22px;">\n          <div style="font-size:15px;font-weight:700;margin-bottom:6px;">⚡ Quick Import from Google Sheets</div>\n          <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Share your Google Sheet publicly → paste link here → customers import automatically. No setup needed!</div>\n          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">\n            <input id="gs-quick-url" type="text" placeholder="Paste Google Sheets link here: https://docs.google.com/spreadsheets/d/..." style="flex:1;min-width:200px;">\n            <button class="btn btn-primary" onclick="gsQuickImport()">📥 Import Customers</button>\n          </div>\n          <details style="margin-top:8px;">\n            <summary style="font-size:12px;color:var(--text2);cursor:pointer;">📖 How to share your Google Sheet?</summary>\n            <div style="margin-top:10px;font-size:12px;color:var(--text2);line-height:1.8;background:var(--surface2);border-radius:8px;padding:12px;">\n              1. Open your Google Sheet<br>\n              2. Click <b>Share</b> (top right)<br>\n              3. Change to <b>"Anyone with the link"</b> → <b>Viewer</b><br>\n              4. Copy the link and paste above<br>\n              <br>\n              <b>Column names the app recognizes:</b><br>\n              Name / Company / Client / שם / חברה<br>\n              Phone / Tel / טלפון / נייד<br>\n              Email / אימייל<br>\n              Contact / Person / נציג / איש קשר<br>\n              City / עיר<br>\n            </div>\n          </details>\n          <div id="gs-quick-status" style="display:none;margin-top:10px;"></div>\n        </div>
 
         <!-- Step guide -->
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;">
@@ -3325,6 +3356,76 @@ function clearAllData() {
 
 
 // ===== GOOGLE SHEETS INTEGRATION =====
+// ===== GOOGLE SHEETS QUICK IMPORT =====
+async function gsQuickImport() {
+  const rawUrl = document.getElementById('gs-quick-url')?.value?.trim();
+  if(!rawUrl) { gsQuickStatus('❌ Please paste a Google Sheets link', 'error'); return; }
+
+  // Extract sheet ID from URL
+  const match = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if(!match) { gsQuickStatus('❌ Invalid Google Sheets link. Make sure to copy the full URL', 'error'); return; }
+  const sheetId = match[1];
+
+  // Extract gid (sheet tab) if present
+  const gidMatch = rawUrl.match(/[#&]gid=([0-9]+)/);
+  const gid = gidMatch ? gidMatch[1] : '0';
+
+  // Build CSV export URL
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+
+  gsQuickStatus('🔄 Loading sheet...', 'info');
+
+  try {
+    const res = await fetch(csvUrl);
+    if(!res.ok) {
+      if(res.status === 401 || res.status === 403) {
+        gsQuickStatus('❌ Sheet is not public. Please share it: Share → Anyone with the link → Viewer', 'error');
+      } else {
+        gsQuickStatus(`❌ Error ${res.status}. Check the link and sharing settings.`, 'error');
+      }
+      return;
+    }
+    const csvText = await res.text();
+    if(!csvText || csvText.includes('<!DOCTYPE')) {
+      gsQuickStatus('❌ Could not read sheet. Make sure it is shared publicly.', 'error');
+      return;
+    }
+
+    // Parse CSV
+    const rows = csvText.split('\n').map(line => {
+      const result = [];
+      let cur = '', inQ = false;
+      for(let i=0;i<line.length;i++){
+        const ch = line[i];
+        if(ch==='"') { inQ=!inQ; }
+        else if(ch===','&&!inQ) { result.push(cur.trim()); cur=''; }
+        else { cur+=ch; }
+      }
+      result.push(cur.trim().replace(/\r/g,''));
+      return result;
+    }).filter(r=>r.some(c=>c!==''));
+
+    if(rows.length < 2) { gsQuickStatus('❌ Sheet appears to be empty', 'error'); return; }
+
+    // Store and show import preview modal
+    gsQuickStatus(`✅ Loaded ${rows.length-1} rows. Review and confirm import below.`, 'success');
+    processImportRows(rows);
+
+  } catch(e) {
+    gsQuickStatus('❌ Network error. The sheet must be public to import. Error: ' + e.message, 'error');
+  }
+}
+
+function gsQuickStatus(msg, type='info') {
+  const el = document.getElementById('gs-quick-status');
+  if(!el) return;
+  const colors = {info:'rgba(79,142,247,.12)',success:'rgba(18,217,146,.12)',error:'rgba(240,82,82,.12)'};
+  const borders = {info:'rgba(79,142,247,.3)',success:'rgba(18,217,146,.3)',error:'rgba(240,82,82,.3)'};
+  const textc = {info:'var(--accent)',success:'var(--green)',error:'var(--red)'};
+  el.style.cssText = `display:block;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;background:${colors[type]};border:1px solid ${borders[type]};color:${textc[type]}`;
+  el.textContent = msg;
+}
+
 const GS_LS_KEY = 'servicepro_gs_config';
 
 let gsConfig = {
@@ -3676,6 +3777,196 @@ document.addEventListener('change', e => {
     }
   }
 });
+
+// ===== IMPORT CUSTOMERS FROM EXCEL/CSV =====
+let importRows = []; // raw rows from file
+let importHeaders = [];
+
+function importCustomersFile(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  event.target.value = ''; // reset so same file can be re-selected
+
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  const reader = new FileReader();
+
+  if(isCSV) {
+    reader.onload = e => parseCSVImport(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    // Excel — load SheetJS dynamically
+    if(!window.XLSX) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      script.onload = () => {
+        reader.onload = e => parseExcelImport(e.target.result);
+        reader.readAsArrayBuffer(file);
+      };
+      script.onerror = () => showToast('❌ Failed to load Excel parser. Try saving as CSV.', 'error');
+      document.head.appendChild(script);
+    } else {
+      reader.onload = e => parseExcelImport(e.target.result);
+      reader.readAsArrayBuffer(file);
+    }
+  }
+}
+
+function parseExcelImport(arrayBuffer) {
+  try {
+    const wb = XLSX.read(arrayBuffer, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    processImportRows(rows);
+  } catch(e) {
+    showToast('❌ Could not read Excel file: ' + e.message, 'error');
+  }
+}
+
+function parseCSVImport(text) {
+  const rows = text.split('\n').map(line => {
+    // Handle quoted fields
+    const result = [];
+    let cur = '', inQ = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(ch==='"') { inQ=!inQ; }
+      else if((ch===','||ch==='\t')&&!inQ) { result.push(cur.trim()); cur=''; }
+      else { cur+=ch; }
+    }
+    result.push(cur.trim());
+    return result;
+  }).filter(r => r.some(c=>c!==''));
+  processImportRows(rows);
+}
+
+// Field definitions for mapping
+const IMPORT_FIELDS = [
+  { key:'name',    label:'Company Name *', required:true },
+  { key:'contact', label:'Contact Person' },
+  { key:'role',    label:'Role / Title' },
+  { key:'phone',   label:'Phone' },
+  { key:'email',   label:'Email' },
+  { key:'city',    label:'City' },
+  { key:'industry',label:'Industry' },
+  { key:'status',  label:'Status' },
+];
+
+// Auto-detect column mapping by header name
+function autoDetectMapping(headers) {
+  const map = {};
+  const synonyms = {
+    name:    ['name','company','firm','client','customer','שם','חברה','לקוח'],
+    contact: ['contact','person','representative','נציג','איש קשר'],
+    role:    ['role','title','position','job','תפקיד'],
+    phone:   ['phone','tel','mobile','cell','טלפון','נייד'],
+    email:   ['email','mail','אימייל','דואר'],
+    city:    ['city','town','location','עיר','מקום'],
+    industry:['industry','sector','field','ענף','תחום'],
+    status:  ['status','סטטוס','מצב'],
+  };
+  headers.forEach((h, idx) => {
+    const hl = (h||'').toLowerCase().trim();
+    for(const [field, words] of Object.entries(synonyms)) {
+      if(words.some(w => hl.includes(w))) {
+        if(!map[field]) map[field] = idx;
+      }
+    }
+  });
+  return map;
+}
+
+let importMapping = {};
+
+function processImportRows(rows) {
+  if(!rows || rows.length === 0) { showToast('❌ File is empty', 'error'); return; }
+  importHeaders = (rows[0]||[]).map(String);
+  importRows = rows;
+  importMapping = autoDetectMapping(importHeaders);
+
+  // Build mapping UI
+  const grid = document.getElementById('import-mapping-grid');
+  grid.innerHTML = IMPORT_FIELDS.map(f => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:5px;">${f.label}</div>
+      <select id="map-${f.key}" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-size:12px;" onchange="updateImportPreview()">
+        <option value="">— skip —</option>
+        ${importHeaders.map((h,i) => `<option value="${i}" ${importMapping[f.key]===i?'selected':''}>${h||'Column '+(i+1)}</option>`).join('')}
+      </select>
+    </div>
+  `).join('');
+
+  updateImportPreview();
+  document.getElementById('import-modal').classList.add('open');
+}
+
+function updateImportPreview() {
+  // Read current mapping from selects
+  IMPORT_FIELDS.forEach(f => {
+    const sel = document.getElementById('map-'+f.key);
+    if(sel) importMapping[f.key] = sel.value !== '' ? parseInt(sel.value) : undefined;
+  });
+
+  const skipHeader = document.getElementById('import-skip-header')?.checked;
+  const dataRows = skipHeader ? importRows.slice(1) : importRows;
+  const preview = dataRows.slice(0, 5);
+
+  // Header
+  document.getElementById('import-preview-head').innerHTML =
+    IMPORT_FIELDS.filter(f=>importMapping[f.key]!==undefined).map(f=>`<th>${f.label}</th>`).join('') + '<th>#</th>';
+
+  // Rows
+  document.getElementById('import-preview-body').innerHTML = preview.map((row,i) => {
+    const cells = IMPORT_FIELDS.filter(f=>importMapping[f.key]!==undefined)
+      .map(f => `<td>${row[importMapping[f.key]]||'—'}</td>`).join('');
+    return `<tr>${cells}<td style="color:var(--text2);font-size:11px;">${i+1}</td></tr>`;
+  }).join('');
+
+  const total = dataRows.length;
+  document.getElementById('import-count').textContent = `(${total} rows)`;
+}
+
+function confirmImport() {
+  const skipHeader = document.getElementById('import-skip-header')?.checked;
+  const skipDupes = document.getElementById('import-skip-duplicates')?.checked;
+  const dataRows = skipHeader ? importRows.slice(1) : importRows;
+
+  let added = 0, skipped = 0, errors = 0;
+  const existingNames = customers.map(c=>c.name.toLowerCase().trim());
+
+  dataRows.forEach(row => {
+    const name = (row[importMapping['name']]||'').toString().trim();
+    if(!name) { errors++; return; }
+    if(skipDupes && existingNames.includes(name.toLowerCase())) { skipped++; return; }
+
+    const maxId = customers.reduce((m,c)=>Math.max(m,c.id||0),0);
+    const newCustomer = {
+      id: maxId + 1 + added,
+      name,
+      contact: (row[importMapping['contact']]||'').toString().trim(),
+      role:    (row[importMapping['role']]||'').toString().trim(),
+      phone:   (row[importMapping['phone']]||'').toString().trim(),
+      email:   (row[importMapping['email']]||'').toString().trim(),
+      city:    (row[importMapping['city']]||'').toString().trim(),
+      industry:(row[importMapping['industry']]||'').toString().trim(),
+      status:  (row[importMapping['status']]||'active').toString().trim().toLowerCase()||'active',
+    };
+    customers.push(newCustomer);
+    existingNames.push(name.toLowerCase());
+    added++;
+  });
+
+  saveToLocalStorage(); saveToServer();
+  renderCustomers(); populateCustomerSelects(); updateBadges();
+
+  const msg = document.getElementById('import-result-msg');
+  msg.style.display = 'block';
+  msg.style.background = added > 0 ? 'rgba(18,217,146,.1)' : 'rgba(240,82,82,.1)';
+  msg.style.border = `1px solid ${added > 0 ? 'rgba(18,217,146,.3)' : 'rgba(240,82,82,.3)'}`;
+  msg.innerHTML = `✅ <b>${added}</b> customers imported${skipped?` · ${skipped} skipped (duplicates)`:''}${errors?` · ${errors} empty rows`:''}`;
+
+  document.getElementById('import-confirm-btn').style.display = 'none';
+  showToast(`✅ Imported ${added} customers successfully`);
+}
 
 // ===== AUTH SYSTEM =====
 let currentRole = null; // 'admin' | 'tech' | null
