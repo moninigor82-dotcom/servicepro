@@ -590,6 +590,52 @@
   </div>
 </div>
 
+<!-- IMPORT PREVIEW MODAL --><!-- CONTRACT IMPORT MODAL -->
+<div class="modal-overlay" id="contract-import-modal">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-header">
+      <span class="modal-title">📋 Import Contracts</span>
+      <button class="modal-close" onclick="closeModal('contract-import-modal')">✕</button>
+    </div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;">📋 Column Mapping</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">Match your Excel columns to contract fields:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="contract-mapping-grid"></div>
+    </div>
+    <div style="margin-bottom:10px;display:flex;gap:20px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="contract-skip-header" checked style="accent-color:var(--accent);">
+        Skip first row (header)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" id="contract-skip-dupes" checked style="accent-color:var(--accent);">
+        Skip duplicates
+      </label>
+    </div>
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px;">👁 Preview <span id="contract-import-count" style="color:var(--accent);"></span></div>
+    <div class="table-wrap" style="max-height:260px;overflow-y:auto;margin-bottom:16px;">
+      <table><thead><tr id="contract-preview-head"></tr></thead><tbody id="contract-preview-body"></tbody></table>
+    </div>
+
+    <!-- Google Sheets quick import -->
+    <div style="background:linear-gradient(135deg,rgba(18,217,146,.08),rgba(79,142,247,.08));border:1px solid rgba(18,217,146,.25);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;">🔗 Or import from Google Sheets</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Share → Anyone with the link → Viewer, then paste link:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="gs-contract-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/..." style="flex:1;min-width:200px;">
+        <button class="btn btn-primary" onclick="gsContractImport()">📥 Load Sheet</button>
+      </div>
+      <div id="gs-contract-status" style="display:none;margin-top:8px;"></div>
+    </div>
+
+    <div id="contract-import-result" style="display:none;padding:12px;border-radius:8px;font-size:13px;margin-bottom:12px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('contract-import-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmContractImport()" id="contract-import-btn">✅ Import All</button>
+    </div>
+  </div>
+</div>
+
 <!-- IMPORT PREVIEW MODAL -->
 <div class="modal-overlay" id="import-modal">
   <div class="modal" style="max-width:800px;">
@@ -846,7 +892,11 @@
   <div class="page" id="page-contracts">
     <div class="topbar">
       <div><h2>Service Contracts</h2><p>Contract and SLA management</p></div>
-      <button class="btn btn-primary" onclick="openModal('contract-modal')">+ New Contract</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-secondary" onclick="document.getElementById('contract-import-input').click()" style="border-color:rgba(18,217,146,.4);color:var(--green);">📥 Import Excel/CSV</button>
+        <input type="file" id="contract-import-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importContractsFile(event)">
+        <button class="btn btn-primary" onclick="openModal('contract-modal')">+ New Contract</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-header">
@@ -3778,6 +3828,212 @@ document.addEventListener('change', e => {
   }
 });
 
+// ===== IMPORT CONTRACTS FROM EXCEL/CSV/GOOGLE SHEETS =====
+let contractImportRows = [];
+let contractImportHeaders = [];
+let contractImportMapping = {};
+
+const CONTRACT_FIELDS = [
+  { key:'customer',  label:'Customer Name *', required:true },
+  { key:'type',      label:'Contract Type' },
+  { key:'start',     label:'Start Date' },
+  { key:'end',       label:'End Date' },
+  { key:'value',     label:'Value (₪)' },
+  { key:'status',    label:'Status' },
+  { key:'includes',  label:'Includes / Notes' },
+];
+
+const CONTRACT_SYNONYMS = {
+  customer: ['customer','client','company','חברה','לקוח','שם'],
+  type:     ['type','contract type','סוג','חוזה'],
+  start:    ['start','start date','from','תחילה','התחלה','מתאריך'],
+  end:      ['end','end date','expiry','until','עד','סיום','תוקף'],
+  value:    ['value','amount','price','cost','מחיר','עלות','שווי'],
+  status:   ['status','סטטוס','מצב'],
+  includes: ['includes','notes','description','details','הערות','כולל'],
+};
+
+function autoDetectContractMapping(headers) {
+  const map = {};
+  headers.forEach((h, idx) => {
+    const hl = (h||'').toLowerCase().trim();
+    for(const [field, words] of Object.entries(CONTRACT_SYNONYMS)) {
+      if(words.some(w => hl.includes(w))) {
+        if(map[field] === undefined) map[field] = idx;
+      }
+    }
+  });
+  return map;
+}
+
+function importContractsFile(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  event.target.value = '';
+  const isCSV = file.name.toLowerCase().endsWith('.csv');
+  const reader = new FileReader();
+  if(isCSV) {
+    reader.onload = e => processContractRows(parseCSVtoRows(e.target.result));
+    reader.readAsText(file, 'UTF-8');
+  } else {
+    const loadXLSX = cb => {
+      if(window.XLSX) return cb();
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = cb;
+      s.onerror = () => showToast('❌ Failed to load Excel parser. Try saving as CSV.', 'error');
+      document.head.appendChild(s);
+    };
+    loadXLSX(() => {
+      reader.onload = e => {
+        try {
+          const wb = XLSX.read(e.target.result, {type:'array'});
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          processContractRows(XLSX.utils.sheet_to_json(ws, {header:1, defval:''}));
+        } catch(err) { showToast('❌ ' + err.message, 'error'); }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+}
+
+function parseCSVtoRows(text) {
+  return text.split('\n').map(line => {
+    const result = []; let cur = '', inQ = false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(ch==='"') inQ=!inQ;
+      else if((ch===','||ch==='\t')&&!inQ){ result.push(cur.trim()); cur=''; }
+      else cur+=ch;
+    }
+    result.push(cur.trim().replace(/\r/g,''));
+    return result;
+  }).filter(r=>r.some(c=>c!==''));
+}
+
+async function gsContractImport() {
+  const rawUrl = document.getElementById('gs-contract-url')?.value?.trim();
+  if(!rawUrl) { gsContractStatus('❌ Paste a Google Sheets link first', 'error'); return; }
+  const match = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if(!match) { gsContractStatus('❌ Invalid Google Sheets link', 'error'); return; }
+  const gidMatch = rawUrl.match(/[#&]gid=([0-9]+)/);
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv&gid=${gidMatch?gidMatch[1]:'0'}`;
+  gsContractStatus('🔄 Loading sheet...', 'info');
+  try {
+    const res = await fetch(csvUrl);
+    if(!res.ok) { gsContractStatus(res.status===403?'❌ Sheet is private. Share → Anyone with link → Viewer':`❌ Error ${res.status}`,'error'); return; }
+    const text = await res.text();
+    if(!text||text.includes('<!DOCTYPE')){ gsContractStatus('❌ Could not read. Make sure sheet is public.','error'); return; }
+    gsContractStatus('✅ Loaded! Review mapping below.','success');
+    processContractRows(parseCSVtoRows(text));
+  } catch(e) { gsContractStatus('❌ ' + e.message, 'error'); }
+}
+
+function gsContractStatus(msg, type) {
+  const el = document.getElementById('gs-contract-status');
+  if(!el) return;
+  const c={info:'rgba(79,142,247,.12)',success:'rgba(18,217,146,.12)',error:'rgba(240,82,82,.12)'};
+  const b={info:'rgba(79,142,247,.3)',success:'rgba(18,217,146,.3)',error:'rgba(240,82,82,.3)'};
+  const t={info:'var(--accent)',success:'var(--green)',error:'var(--red)'};
+  el.style.cssText=`display:block;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;background:${c[type]};border:1px solid ${b[type]};color:${t[type]}`;
+  el.textContent=msg;
+}
+
+function processContractRows(rows) {
+  if(!rows||rows.length===0){ showToast('❌ File is empty','error'); return; }
+  contractImportHeaders = (rows[0]||[]).map(String);
+  contractImportRows = rows;
+  contractImportMapping = autoDetectContractMapping(contractImportHeaders);
+
+  const grid = document.getElementById('contract-mapping-grid');
+  grid.innerHTML = CONTRACT_FIELDS.map(f=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;">
+      <div style="font-size:11px;color:var(--text2);margin-bottom:5px;">${f.label}</div>
+      <select id="cmap-${f.key}" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px;color:var(--text);font-size:12px;" onchange="updateContractPreview()">
+        <option value="">— skip —</option>
+        ${contractImportHeaders.map((h,i)=>`<option value="${i}" ${contractImportMapping[f.key]===i?'selected':''}>${h||'Column '+(i+1)}</option>`).join('')}
+      </select>
+    </div>`).join('');
+
+  updateContractPreview();
+  document.getElementById('contract-import-btn').style.display = '';
+  document.getElementById('contract-import-result').style.display = 'none';
+  document.getElementById('contract-import-modal').classList.add('open');
+}
+
+function updateContractPreview() {
+  CONTRACT_FIELDS.forEach(f => {
+    const sel = document.getElementById('cmap-'+f.key);
+    if(sel) contractImportMapping[f.key] = sel.value !== '' ? parseInt(sel.value) : undefined;
+  });
+  const skip = document.getElementById('contract-skip-header')?.checked;
+  const data = skip ? contractImportRows.slice(1) : contractImportRows;
+  const visFields = CONTRACT_FIELDS.filter(f=>contractImportMapping[f.key]!==undefined);
+
+  document.getElementById('contract-preview-head').innerHTML = visFields.map(f=>`<th>${f.label}</th>`).join('')+'<th>#</th>';
+  document.getElementById('contract-preview-body').innerHTML = data.slice(0,5).map((row,i)=>
+    `<tr>${visFields.map(f=>`<td>${row[contractImportMapping[f.key]]||'—'}</td>`).join('')}<td style="color:var(--text2);font-size:11px;">${i+1}</td></tr>`
+  ).join('');
+  document.getElementById('contract-import-count').textContent = `(${data.length} rows)`;
+}
+
+function confirmContractImport() {
+  const skip = document.getElementById('contract-skip-header')?.checked;
+  const skipDupes = document.getElementById('contract-skip-dupes')?.checked;
+  const data = skip ? contractImportRows.slice(1) : contractImportRows;
+
+  let added=0, skipped=0, errors=0;
+
+  data.forEach(row => {
+    const custName = (row[contractImportMapping['customer']]||'').toString().trim();
+    if(!custName){ errors++; return; }
+
+    // Find matching customer by name
+    const cust = customers.find(c=>c.name.toLowerCase()===custName.toLowerCase());
+    const custId = cust ? cust.id : null;
+
+    // Skip duplicate: same customer + same end date
+    if(skipDupes && custId) {
+      const endVal = (row[contractImportMapping['end']]||'').toString().trim();
+      const exists = contracts.find(c=>c.customerId===custId && c.end===endVal);
+      if(exists){ skipped++; return; }
+    }
+
+    const typeVal = (row[contractImportMapping['type']]||'Annual').toString().trim() || 'Annual';
+    const startVal = (row[contractImportMapping['start']]||'').toString().trim();
+    const endVal = (row[contractImportMapping['end']]||'').toString().trim();
+    const valueRaw = (row[contractImportMapping['value']]||'0').toString().replace(/[^\d.]/g,'');
+    const statusVal = (row[contractImportMapping['status']]||'active').toString().trim().toLowerCase()||'active';
+    const includesVal = (row[contractImportMapping['includes']]||'').toString().trim();
+
+    contracts.push({
+      id: Date.now() + added,
+      customerId: custId,
+      customerNameRaw: custId ? undefined : custName, // store name if no match
+      type: typeVal,
+      start: startVal,
+      end: endVal,
+      value: parseFloat(valueRaw)||0,
+      status: statusVal,
+      includes: includesVal,
+      slaId: null,
+    });
+    added++;
+  });
+
+  saveToLocalStorage(); saveToServer();
+  renderContracts(); renderDashboard(); updateBadges();
+
+  const msg = document.getElementById('contract-import-result');
+  msg.style.display='block';
+  msg.style.background = added>0?'rgba(18,217,146,.1)':'rgba(240,82,82,.1)';
+  msg.style.border = `1px solid ${added>0?'rgba(18,217,146,.3)':'rgba(240,82,82,.3)'}`;
+  msg.innerHTML = `✅ <b>${added}</b> contracts imported${skipped?` · ${skipped} skipped`:''}${errors?` · ${errors} empty rows`:''} <span style="color:var(--text2);font-weight:400;font-size:12px;">· Window closes in 2 sec...</span>`;
+  document.getElementById('contract-import-btn').style.display='none';
+  showToast(`✅ Imported ${added} contracts`);
+  setTimeout(()=>closeModal('contract-import-modal'), 2000);
+}
+
 // ===== IMPORT CUSTOMERS FROM EXCEL/CSV =====
 let importRows = []; // raw rows from file
 let importHeaders = [];
@@ -3962,10 +4218,12 @@ function confirmImport() {
   msg.style.display = 'block';
   msg.style.background = added > 0 ? 'rgba(18,217,146,.1)' : 'rgba(240,82,82,.1)';
   msg.style.border = `1px solid ${added > 0 ? 'rgba(18,217,146,.3)' : 'rgba(240,82,82,.3)'}`;
-  msg.innerHTML = `✅ <b>${added}</b> customers imported${skipped?` · ${skipped} skipped (duplicates)`:''}${errors?` · ${errors} empty rows`:''}`;
+  msg.innerHTML = `✅ <b>${added}</b> customers imported${skipped?` · ${skipped} skipped (duplicates)`:''}${errors?` · ${errors} empty rows`:''} <span style="color:var(--text2);font-weight:400;font-size:12px;">· Window closes in 2 sec...</span>`;
 
   document.getElementById('import-confirm-btn').style.display = 'none';
   showToast(`✅ Imported ${added} customers successfully`);
+  // Auto-close after 2 seconds
+  setTimeout(() => closeModal('import-modal'), 2000);
 }
 
 // ===== AUTH SYSTEM =====
