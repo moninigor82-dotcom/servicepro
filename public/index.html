@@ -49,7 +49,7 @@
     color: var(--text);
     min-height: 100%;
     min-height: -webkit-fill-available;
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     font-size: 15px;
@@ -133,20 +133,21 @@
     margin-right: var(--sidebar-w);
     padding: 34px 40px;
     min-height: 100vh;
-    overflow-x: hidden;
-    width: 100%;
+    overflow-x: auto;
+    min-width: 0;
   }
   .page { display: none; }
   .page.active { display: block; animation: fadeIn .2s ease; }
   /* Tables scroll horizontally on mobile */
-  .card { overflow-x: auto; }
-  table { min-width: 600px; width: 100%; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 800px; width: 100%; border-collapse: collapse; }
   @keyframes fadeIn { from { opacity:.6; transform: translateY(4px); } to { opacity:1; transform:none; } }
 
   /* ===== TOPBAR ===== */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 32px;
+    padding-top: 8px;
   }
   .topbar h2 {
     font-size: 28px; font-weight: 800;
@@ -154,6 +155,8 @@
     letter-spacing: -0.5px;
   }
   .topbar p { font-size: 15px; color: var(--text2); margin-top: 4px; }
+  /* Space for fixed bell+search bar */
+  .main { padding-top: 70px !important; }
 
   /* ===== BUTTONS ===== */
   .btn {
@@ -232,8 +235,7 @@
   }
   .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,142,247,.13); }
   .search-input::placeholder { color: var(--text2); }
-  table { width:100%; border-collapse: collapse; }
-  th {
+  table { width:100%; border-collapse: collapse; }  th {
     text-align: right;
     padding: 13px 20px;
     font-size: 12.5px; font-weight: 700;
@@ -511,17 +513,20 @@
     z-index:98; backdrop-filter:blur(3px);
   }
   @media (max-width: 768px) {
-    .mobile-menu-btn { display:flex; }
+    .mobile-menu-btn { display:none !important; }
+    .mobile-menu-btn-top { display:flex !important; }
+    #top-navbar { right: 0 !important; }
     .sidebar { transform:translateX(100%); transition:transform .25s ease; z-index:99 !important; }
     .sidebar.mobile-open { transform:translateX(0); }
     .sidebar-overlay.visible { display:block; }
-    .main { margin-right:0 !important; padding:16px !important; }
+    .main { margin-right:0 !important; padding:80px 16px 16px !important; }
     .stats-grid { grid-template-columns:1fr 1fr !important; gap:10px !important; }
     .topbar { flex-wrap:wrap; gap:8px; }
     .topbar h2 { font-size:22px; }
     .form-grid { grid-template-columns:1fr !important; }
     .modal { width:95vw !important; padding:20px !important; }
-    table { font-size:12px; }
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { font-size:12px; min-width:700px; }
     th, td { padding:8px 10px; }
     .kanban-board { grid-template-columns:1fr 1fr !important; }
     .sla-details { grid-template-columns:1fr !important; }
@@ -530,10 +535,12 @@
     .card-header { flex-wrap:wrap; }
     .search-input { width:100% !important; }
     .filter-row { overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; }
+    #top-navbar .logo-text { display:none; }
   }
   @media (max-width: 480px) {
     .stats-grid { grid-template-columns:1fr !important; }
     .kanban-board { grid-template-columns:1fr !important; }
+    table { min-width:600px; }
   }
 
   /* ===== CSV EXPORT BTN ===== */
@@ -625,15 +632,31 @@
   </div>
 </aside>
 
-<!-- NOTIFICATION BELL (fixed top-left) -->
-<div style="position:fixed;top:16px;left:16px;z-index:400;display:flex;gap:8px;align-items:center;">
-  <button class="btn btn-secondary" onclick="toggleNotifPanel()" id="bell-btn" style="position:relative;padding:9px 14px;font-size:16px;">
-    🔔 <span id="bell-count" style="position:absolute;top:-4px;left:-4px;background:var(--red);color:white;font-size:9px;font-weight:800;padding:2px 5px;border-radius:10px;min-width:16px;text-align:center;">0</span>
-  </button>
-  <div id="global-search-wrap" style="position:relative;">
-    <input type="text" id="global-search-input" placeholder="🔍 Search..." oninput="globalSearch(this.value)" onfocus="this.style.width='220px'" onblur="setTimeout(()=>{this.style.width='160px';document.getElementById('global-search-results')?.remove();},200)"
-      style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 14px;color:var(--text);font-family:'Rubik',sans-serif;font-size:13px;outline:none;width:160px;transition:width .2s;">
+<!-- TOP NAVBAR -->
+<div id="top-navbar" style="position:fixed;top:0;left:0;right:var(--sidebar-w);height:56px;background:var(--surface);border-bottom:1px solid var(--border);z-index:300;display:flex;align-items:center;padding:0 20px;gap:12px;">
+  <!-- Logo small -->
+  <div style="display:flex;align-items:center;gap:8px;margin-right:8px;">
+    <div style="width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;" id="navbar-logo-icon">⚡</div>
+    <div style="line-height:1.1;">
+      <div style="font-size:12px;font-weight:800;font-family:'Space Grotesk',sans-serif;letter-spacing:.5px;" id="navbar-logo-name">SERVICEPRO</div>
+      <div style="font-size:9px;color:var(--text2);font-weight:600;letter-spacing:1px;">NEWVISION</div>
+    </div>
   </div>
+  <!-- Divider -->
+  <div style="width:1px;height:28px;background:var(--border);margin:0 4px;"></div>
+  <!-- Bell -->
+  <button class="btn btn-secondary" onclick="toggleNotifPanel()" id="bell-btn" style="position:relative;padding:7px 12px;font-size:15px;border-radius:8px;">
+    🔔 <span id="bell-count" style="position:absolute;top:-4px;right:-4px;background:var(--red);color:white;font-size:9px;font-weight:800;padding:2px 5px;border-radius:10px;min-width:16px;text-align:center;">0</span>
+  </button>
+  <!-- Search -->
+  <div id="global-search-wrap" style="position:relative;flex:1;max-width:320px;">
+    <input type="text" id="global-search-input" placeholder="🔍 Search tickets, customers..."
+      oninput="globalSearch(this.value)"
+      onblur="setTimeout(()=>{document.getElementById('global-search-results')?.remove();},200)"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 14px;color:var(--text);font-family:'Rubik',sans-serif;font-size:13px;outline:none;">
+  </div>
+  <!-- Mobile menu btn (right side) -->
+  <button class="mobile-menu-btn-top" onclick="toggleMobileMenu()" style="display:none;margin-left:auto;background:none;border:1px solid var(--border);border-radius:8px;padding:7px 12px;color:var(--text);cursor:pointer;font-size:18px;">☰</button>
 </div>
 
 <!-- NOTIF PANEL -->
@@ -685,21 +708,25 @@
         <span class="card-title">Recent Tickets</span>
         <button class="btn btn-secondary btn-sm" onclick="showPage('tickets')">View All</button>
       </div>
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr>
           <th>Number</th><th>Customer</th><th>Subject</th><th>Priority</th><th>Status</th><th>Opened</th>
         </tr></thead>
         <tbody id="dash-tickets-tbody"></tbody>
       </table>
+</div>
     </div>
 
     <!-- Expiring contracts -->
     <div class="card">
       <div class="card-header"><span class="card-title">⚠️ Contracts Expiring Soon</span></div>
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr><th>Customer</th><th>Contract Type</th><th>End Date</th><th>Days Left</th><th>Action</th></tr></thead>
         <tbody id="dash-expiring-tbody"></tbody>
       </table>
+</div>
     </div>
   </div>
 
@@ -715,12 +742,14 @@
         <span class="card-title">Customer List</span>
         <input class="search-input" type="text" placeholder="Search customer..." id="customer-search" oninput="renderCustomers()">
       </div>
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr>
           <th>Customer Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Status</th><th>Tickets</th><th>Actions</th>
         </tr></thead>
         <tbody id="customers-tbody"></tbody>
       </table>
+</div>
     </div>
   </div>
 
@@ -740,12 +769,14 @@
           <button class="filter-btn" onclick="filterContracts('expired',this)">Expired</button>
         </div>
       </div>
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr>
           <th>Customer</th><th>Contract Type</th><th>Start Date</th><th>End Date</th><th>SLA</th><th>Status</th><th>Actions</th>
         </tr></thead>
         <tbody id="contracts-tbody"></tbody>
       </table>
+</div>
     </div>
   </div>
 
@@ -780,12 +811,14 @@
         </select>
       </div>
       <div id="tickets-list-view">
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr>
           <th>Number</th><th>Customer</th><th>Subject</th><th>Priority</th><th>Status</th><th>Technician</th><th>Work Report</th><th>Opened</th><th>Actions</th>
         </tr></thead>
         <tbody id="tickets-tbody"></tbody>
       </table>
+</div>
       </div>
       <div id="tickets-kanban-view" style="display:none;padding:16px;">
         <div class="kanban-board" id="kanban-board"></div>
@@ -809,12 +842,14 @@
           <button class="filter-btn" onclick="filterProjects('done',this)">Done</button>
         </div>
       </div>
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr>
           <th>Project</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Includes</th><th>SLA</th><th>Progress</th><th>Status</th><th>Actions</th>
         </tr></thead>
         <tbody id="projects-tbody"></tbody>
       </table>
+</div>
     </div>
   </div>
 
@@ -827,12 +862,14 @@
     <div class="sla-details" id="sla-overview" style="margin-bottom:20px;"></div>
     <div class="card">
       <div class="card-header"><span class="card-title">SLA Settings</span></div>
-      <table>
+      <div class="table-wrap">
+<table>
         <thead><tr>
           <th>SLA Name</th><th>Response Time</th><th>Resolution Time</th><th>Uptime</th><th>Support</th><th>Priority</th><th>Actions</th>
         </tr></thead>
         <tbody id="sla-tbody"></tbody>
       </table>
+</div>
     </div>
   </div>
 
@@ -2982,9 +3019,16 @@ function applySettingsToUI() {
   document.title = name;
   const senderEl = document.getElementById('sidebar-sender-email');
   if(senderEl) senderEl.textContent = appSettings.fromEmail || 'Not configured';
+  // Sync navbar logo
+  const navName = document.getElementById('navbar-logo-name');
+  const navIcon = document.getElementById('navbar-logo-icon');
+  if(navName && appSettings.appName) navName.textContent = appSettings.appName.split('-')[0] || 'SERVICEPRO';
   // Apply logo
   if(appSettings.logoDataUrl) { logoDataUrl = appSettings.logoDataUrl; logoEmoji = null; }
-  else if(appSettings.logoEmoji) { logoEmoji = appSettings.logoEmoji; logoDataUrl = null; }
+  else if(appSettings.logoEmoji) {
+    logoEmoji = appSettings.logoEmoji; logoDataUrl = null;
+    if(navIcon) navIcon.textContent = logoEmoji;
+  }
   applyLogoToSidebar();
   updateTechEmailsDropdown();
 }
