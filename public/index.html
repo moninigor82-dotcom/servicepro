@@ -820,8 +820,8 @@
     <div class="topbar">
       <div><h2>Customer Management</h2><p>All customers in the system</p></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-secondary" onclick="document.getElementById('import-file-input').click()" style="border-color:rgba(18,217,146,.4);color:var(--green);">📥 Import Excel/CSV</button>
-        <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importCustomersFile(event)">
+        <button class="btn btn-secondary" onclick="document.getElementById('customer-import-input').click()" style="border-color:rgba(18,217,146,.4);color:var(--green);">📥 Import Excel/CSV</button>
+        <input type="file" id="customer-import-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importCustomersFile(event)">
         <button class="btn btn-primary" onclick="openModal('customer-modal')">+ New Customer</button>
         <button class="btn btn-secondary btn-sm export-csv-btn" onclick="exportCSV('customers')">⬇ CSV</button>
       </div>
