@@ -42,12 +42,16 @@
     --text3: #475569;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
+  html { height: 100%; }
   body {
     font-family: 'Rubik', 'Heebo', sans-serif;
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
+    min-height: 100%;
+    min-height: -webkit-fill-available;
     overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     font-size: 15px;
     line-height: 1.5;
   }
@@ -129,9 +133,14 @@
     margin-right: var(--sidebar-w);
     padding: 34px 40px;
     min-height: 100vh;
+    overflow-x: hidden;
+    width: 100%;
   }
   .page { display: none; }
   .page.active { display: block; animation: fadeIn .2s ease; }
+  /* Tables scroll horizontally on mobile */
+  .card { overflow-x: auto; }
+  table { min-width: 600px; width: 100%; }
   @keyframes fadeIn { from { opacity:.6; transform: translateY(4px); } to { opacity:1; transform:none; } }
 
   /* ===== TOPBAR ===== */
@@ -555,7 +564,7 @@
 <body>
 
 <!-- SIDEBAR -->
-<aside class="sidebar" style="position:fixed;right:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:100;overflow-y:auto;">
+<aside class="sidebar" style="position:fixed;right:0;top:0;height:100%;height:-webkit-fill-available;width:var(--sidebar-w);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:100;overflow-y:auto;-webkit-overflow-scrolling:touch;">
   <div class="logo">
     <div class="logo-mark">
       <div class="logo-icon-wrap" onclick="document.getElementById('logo-upload-input').click()" title="Click to change logo">
@@ -644,8 +653,6 @@
     <div class="topbar">
       <div><h2>Dashboard</h2><p>Overview of service activity</p></div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-secondary btn-sm" id="pan-toggle-btn" onclick="togglePanMode()" title="Toggle pan mode (drag to move)" style="font-size:13px;">🖐 Pan Mode</button>
-        <button class="btn btn-secondary btn-sm" onclick="resetPan()" title="Reset view" style="font-size:13px;">⌖ Reset</button>
         <button class="btn btn-primary" onclick="openModal('ticket-modal')">+ New Ticket</button>
       </div>
     </div>
@@ -775,7 +782,7 @@
       <div id="tickets-list-view">
       <table>
         <thead><tr>
-          <th>Number</th><th>Customer</th><th>Subject</th><th>Category</th><th>Priority</th><th>Status</th><th>Opened</th><th>SLA</th><th>Actions</th>
+          <th>Number</th><th>Customer</th><th>Subject</th><th>Priority</th><th>Status</th><th>Technician</th><th>Work Report</th><th>Opened</th><th>Actions</th>
         </tr></thead>
         <tbody id="tickets-tbody"></tbody>
       </table>
@@ -1308,6 +1315,24 @@ function doGet(e) {
       <div class="form-group"><label>Technician Phone</label><input id="t-assignee-phone" type="text" placeholder="050-0000000"></div>
       <div class="form-group full"><label>Full Description</label><textarea id="t-description" placeholder="Describe the issue in detail..."></textarea></div>
       <div class="form-group full"><label>Update / Follow-up</label><textarea id="t-update" placeholder="Add an update to the ticket..."></textarea></div>
+      <div class="form-group full">
+        <label style="color:var(--green);font-weight:700;">✅ Work Report</label>
+        <textarea id="t-work-report" placeholder="Describe what was done: actions taken, parts replaced, solution found, time spent..." style="min-height:110px;border-color:rgba(18,217,146,.3);"></textarea>
+        <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">⏱ Time Spent</label>
+            <input id="t-time-spent" type="text" placeholder="e.g. 2.5 hours" style="font-size:13px;">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">📅 Date of Work</label>
+            <input id="t-work-date" type="date" style="font-size:13px;">
+          </div>
+          <div style="flex:1;min-width:120px;">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">🔧 Parts Used</label>
+            <input id="t-parts-used" type="text" placeholder="Part names / numbers" style="font-size:13px;">
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Email / Notification section -->
@@ -1712,6 +1737,10 @@ function openModal(id, editId=null) {
         document.getElementById('t-assignee-phone').value=t.assigneePhone||'';
         document.getElementById('t-description').value=t.description;
         document.getElementById('t-update').value=t.update;
+        if(document.getElementById('t-work-report')) document.getElementById('t-work-report').value=t.workReport||'';
+        if(document.getElementById('t-time-spent')) document.getElementById('t-time-spent').value=t.timeSpent||'';
+        if(document.getElementById('t-work-date')) document.getElementById('t-work-date').value=t.workDate||'';
+        if(document.getElementById('t-parts-used')) document.getElementById('t-parts-used').value=t.partsUsed||'';
         renderTicketHistory(t.id);
       }
     } else {
@@ -1882,6 +1911,10 @@ function saveTicket() {
     assigneePhone: document.getElementById('t-assignee-phone')?.value||'',
     description: document.getElementById('t-description').value,
     update: document.getElementById('t-update').value,
+    workReport: document.getElementById('t-work-report')?.value||'',
+    timeSpent: document.getElementById('t-time-spent')?.value||'',
+    workDate: document.getElementById('t-work-date')?.value||'',
+    partsUsed: document.getElementById('t-parts-used')?.value||'',
     created: editingId ? tickets.find(t=>t.id==editingId)?.created||today : today,
   };
   if(editingId) {
@@ -2074,34 +2107,39 @@ function renderTickets() {
   if(q) list = list.filter(t=>t.subject.toLowerCase().includes(q)||getCustomerName(t.customerId).toLowerCase().includes(q)||t.id.toLowerCase().includes(q));
   if(techFilter) list = list.filter(t=>t.assignee===techFilter);
   const tbody = document.getElementById('tickets-tbody');
-  tbody.innerHTML = list.length ? list.map(t=>{
-    const contract = contracts.find(c=>c.customerId==t.customerId&&c.status==='active');
-    const slaObj = contract&&slas.find(s=>s.id==contract.slaId);
-    const slaHtml = slaObj ? `<span class="badge ${tierColor(slaObj.tier)}">${slaObj.response}</span>` : '<span style="color:var(--text2);font-size:12px">None</span>';
-    return `<tr>
-      <td style="font-weight:700;color:var(--accent)">${t.id}</td>
-      <td>${getCustomerName(t.customerId)}</td>
-      <td>${t.subject}${t.update?`<br><small style="color:var(--text2)">↳ ${t.update.substring(0,40)}${t.update.length>40?'...':''}</small>`:''}</td>
-      <td><small>${t.category}</small></td>
-      <td class="priority-${t.priority==='critical'||t.priority==='high'?'high':t.priority==='medium'?'med':'low'}">${priorityLabel(t.priority)}</td>
-      <td>${statusBadge(t.status)}<br><select class="quick-status" onchange="quickChangeStatus('${t.id}',this.value)" style="margin-top:4px;">
-        <option value="">Quick change...</option>
-        <option value="open">Open</option>
-        <option value="in_progress">In Progress</option>
-        <option value="resolved">Resolved</option>
-        <option value="closed">Closed</option>
-      </select></td>
-      <td>${formatDate(t.created)}</td>
-      <td>${slaHtml}</td>
-      <td><div class="action-btns">
-        <button class="btn btn-secondary btn-sm" title="Preview / Send email" onclick="previewExistingTicket('${t.id}')" style="color:var(--accent);border-color:rgba(79,142,247,.4)">👁</button>
-        <button class="btn btn-secondary btn-sm" onclick="openModal('ticket-modal','${t.id}')">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteTicket('${t.id}')">🗑️</button>
-      </div></td>
-    </tr>`;
+  tbody.innerHTML = list.length ? list.map(function(t){
+    var wrText = t.workReport ? t.workReport.substring(0,35)+(t.workReport.length>35?'...':'') : '';
+    var wr = t.workReport
+      ? '<div style="font-size:12px;color:var(--green);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">✅ '+wrText+'</div>'+(t.timeSpent?'<small style="color:var(--text2)">⏱ '+t.timeSpent+'</small>':'')
+      : '<span style="color:var(--border2);font-size:12px;">—</span>';
+    var cust = getCustomerName(t.customerId);
+    var pClass = 'priority-'+(t.priority==='critical'||t.priority==='high'?'high':t.priority==='medium'?'med':'low');
+    var updateHtml = t.update ? '<br><small style="color:var(--text2)">↳ '+t.update.substring(0,40)+(t.update.length>40?'...':'')+'</small>' : '';
+    var tid = t.id;
+    return '<tr>'
+      +'<td style="font-weight:700;color:var(--accent)">'+tid+'</td>'
+      +'<td>'+cust+'</td>'
+      +'<td style="max-width:180px;">'+t.subject+updateHtml+'</td>'
+      +'<td class="'+pClass+'">'+priorityLabel(t.priority)+'</td>'
+      +'<td>'+statusBadge(t.status)+'<br>'
+      +'<select class="quick-status" onchange="quickChangeStatus(&quot;'+tid+'&quot;,this.value)" style="margin-top:4px;">'
+      +'<option value="">Quick change...</option>'
+      +'<option value="open">Open</option>'
+      +'<option value="in_progress">In Progress</option>'
+      +'<option value="resolved">Resolved</option>'
+      +'<option value="closed">Closed</option>'
+      +'</select></td>'
+      +'<td style="font-size:13px;">'+(t.assignee||'<span style="color:var(--text2)">—</span>')+'</td>'
+      +'<td>'+wr+'</td>'
+      +'<td>'+formatDate(t.created)+'</td>'
+      +'<td><div class="action-btns">'
+      +'<button class="btn btn-secondary btn-sm" onclick="previewExistingTicket(&quot;'+tid+'&quot;)" style="color:var(--accent);border-color:rgba(79,142,247,.4)">👁</button>'
+      +'<button class="btn btn-secondary btn-sm" onclick="openModal(&quot;ticket-modal&quot;,&quot;'+tid+'&quot;)">✏️</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteTicket(&quot;'+tid+'&quot;)">🗑️</button>'
+      +'</div></td>'
+      +'</tr>';
   }).join('') : '<tr><td colspan="9" class="empty-state"><div class="icon">🎫</div>No tickets found</td></tr>';
 }
-
 function renderProjects() {
   let list = projects;
   if(projectFilter!=='all') list = list.filter(p=>p.status===projectFilter);
@@ -3383,107 +3421,6 @@ setTimeout(() => {
     gsStartAutoSync();
   }
 }, 500);
-
-// ===== PAN MODE (Dashboard drag to move) =====
-let panMode = false;
-let panX = 0, panY = 0;
-let panStartX = 0, panStartY = 0;
-let panDragging = false;
-
-function togglePanMode() {
-  panMode = !panMode;
-  const btn = document.getElementById('pan-toggle-btn');
-  const dashboard = document.getElementById('page-dashboard');
-  if (panMode) {
-    btn.style.background = 'rgba(79,142,247,.25)';
-    btn.style.borderColor = 'var(--accent)';
-    btn.style.color = 'var(--accent)';
-    dashboard.style.cursor = 'grab';
-    dashboard.style.userSelect = 'none';
-    showToast('🖐 Pan mode ON — drag to move the page');
-  } else {
-    btn.style.background = '';
-    btn.style.borderColor = '';
-    btn.style.color = '';
-    dashboard.style.cursor = '';
-    dashboard.style.userSelect = '';
-  }
-}
-
-function resetPan() {
-  panX = 0; panY = 0;
-  const inner = document.getElementById('dashboard-inner');
-  if (inner) inner.style.transform = 'translate(0px, 0px)';
-  showToast('⌖ View reset');
-}
-
-// Wrap dashboard content in pannable container
-function initPanWrapper() {
-  const dashboard = document.getElementById('page-dashboard');
-  if (!dashboard || document.getElementById('dashboard-inner')) return;
-  // Wrap all children except topbar in a div
-  const children = Array.from(dashboard.children);
-  const topbar = children[0]; // first child is topbar
-  const inner = document.createElement('div');
-  inner.id = 'dashboard-inner';
-  inner.style.cssText = 'transition: transform 0.05s linear; will-change: transform;';
-  children.slice(1).forEach(c => inner.appendChild(c));
-  dashboard.appendChild(inner);
-}
-
-document.addEventListener('mousedown', function(e) {
-  if (!panMode) return;
-  const dashboard = document.getElementById('page-dashboard');
-  if (!dashboard.contains(e.target)) return;
-  // Don't pan if clicking a button/input
-  if (e.target.closest('button, input, select, textarea, a')) return;
-  panDragging = true;
-  panStartX = e.clientX - panX;
-  panStartY = e.clientY - panY;
-  dashboard.style.cursor = 'grabbing';
-  e.preventDefault();
-});
-
-document.addEventListener('mousemove', function(e) {
-  if (!panDragging) return;
-  panX = e.clientX - panStartX;
-  panY = e.clientY - panStartY;
-  const inner = document.getElementById('dashboard-inner');
-  if (inner) inner.style.transform = `translate(${panX}px, ${panY}px)`;
-});
-
-document.addEventListener('mouseup', function() {
-  if (panDragging) {
-    panDragging = false;
-    const dashboard = document.getElementById('page-dashboard');
-    if (dashboard) dashboard.style.cursor = panMode ? 'grab' : '';
-  }
-});
-
-// Touch support for pan
-document.addEventListener('touchstart', function(e) {
-  if (!panMode) return;
-  const dashboard = document.getElementById('page-dashboard');
-  if (!dashboard.contains(e.target)) return;
-  const touch = e.touches[0];
-  panDragging = true;
-  panStartX = touch.clientX - panX;
-  panStartY = touch.clientY - panY;
-}, {passive: true});
-
-document.addEventListener('touchmove', function(e) {
-  if (!panDragging) return;
-  const touch = e.touches[0];
-  panX = touch.clientX - panStartX;
-  panY = touch.clientY - panStartY;
-  const inner = document.getElementById('dashboard-inner');
-  if (inner) inner.style.transform = `translate(${panX}px, ${panY}px)`;
-}, {passive: true});
-
-document.addEventListener('touchend', function() { panDragging = false; });
-
-// Init pan wrapper on load
-setTimeout(() => { initPanWrapper(); }, 400);
 
 function quickChangeStatus(ticketId, newStatus) {
   if(!newStatus) return;
