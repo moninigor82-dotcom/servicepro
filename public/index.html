@@ -875,11 +875,19 @@
     <div class="card">
       <div class="card-header">
         <span class="card-title">Customer List</span>
-        <input class="search-input" type="text" placeholder="Search customer..." id="customer-search" oninput="renderCustomers()">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div id="customers-bulk-bar" style="display:none;align-items:center;gap:8px;">
+            <span id="customers-selected-count" style="font-size:13px;color:var(--text2);"></span>
+            <button class="btn btn-danger btn-sm" onclick="bulkDeleteCustomers()">🗑️ Delete Selected</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearCustomerSelection()">✕ Cancel</button>
+          </div>
+          <input class="search-input" type="text" placeholder="Search customer..." id="customer-search" oninput="renderCustomers()">
+        </div>
       </div>
       <div class="table-wrap">
 <table>
         <thead><tr>
+          <th style="width:36px;"><input type="checkbox" id="customers-select-all" onchange="toggleAllCustomers(this.checked)" style="accent-color:var(--accent);cursor:pointer;"></th>
           <th>Customer Name</th><th>Contact</th><th>Phone</th><th>Email</th><th>Status</th><th>Tickets</th><th>Actions</th>
         </tr></thead>
         <tbody id="customers-tbody"></tbody>
@@ -901,16 +909,24 @@
     <div class="card">
       <div class="card-header">
         <span class="card-title">All Contracts</span>
-        <div class="filter-row">
-          <button class="filter-btn active" onclick="filterContracts('all',this)">All</button>
-          <button class="filter-btn" onclick="filterContracts('active',this)">Active</button>
-          <button class="filter-btn" onclick="filterContracts('expiring',this)">Expiring</button>
-          <button class="filter-btn" onclick="filterContracts('expired',this)">Expired</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <div id="contracts-bulk-bar" style="display:none;align-items:center;gap:8px;">
+            <span id="contracts-selected-count" style="font-size:13px;color:var(--text2);"></span>
+            <button class="btn btn-danger btn-sm" onclick="bulkDeleteContracts()">🗑️ Delete Selected</button>
+            <button class="btn btn-secondary btn-sm" onclick="clearContractSelection()">✕ Cancel</button>
+          </div>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="filterContracts('all',this)">All</button>
+            <button class="filter-btn" onclick="filterContracts('active',this)">Active</button>
+            <button class="filter-btn" onclick="filterContracts('expiring',this)">Expiring</button>
+            <button class="filter-btn" onclick="filterContracts('expired',this)">Expired</button>
+          </div>
         </div>
       </div>
       <div class="table-wrap">
 <table>
         <thead><tr>
+          <th style="width:36px;"><input type="checkbox" id="contracts-select-all" onchange="toggleAllContracts(this.checked)" style="accent-color:var(--accent);cursor:pointer;"></th>
           <th>Customer</th><th>Contract Type</th><th>Start Date</th><th>End Date</th><th>SLA</th><th>Status</th><th>Actions</th>
         </tr></thead>
         <tbody id="contracts-tbody"></tbody>
@@ -2190,12 +2206,77 @@ function saveSLA() {
 function deleteCustomer(id) {
   if(!confirm('Delete this customer?')) return;
   customers = customers.filter(c=>c.id!=id);
+  saveToLocalStorage(); saveToServer();
   renderCustomers(); updateBadges();
 }
 function deleteContract(id) {
   if(!confirm('Delete this contract?')) return;
   contracts = contracts.filter(c=>c.id!=id);
+  saveToLocalStorage(); saveToServer();
   renderContracts(); renderDashboard(); updateBadges();
+}
+
+// ===== BULK SELECT / DELETE =====
+function updateCustomerBulkBar() {
+  const cbs = document.querySelectorAll('.customer-cb:checked');
+  const bar = document.getElementById('customers-bulk-bar');
+  const countEl = document.getElementById('customers-selected-count');
+  if(!bar) return;
+  bar.style.display = cbs.length > 0 ? 'flex' : 'none';
+  if(countEl) countEl.textContent = cbs.length + ' selected';
+  const all = document.querySelectorAll('.customer-cb');
+  const sa = document.getElementById('customers-select-all');
+  if(sa) sa.checked = all.length > 0 && cbs.length === all.length;
+}
+function toggleAllCustomers(checked) {
+  document.querySelectorAll('.customer-cb').forEach(cb => cb.checked = checked);
+  updateCustomerBulkBar();
+}
+function clearCustomerSelection() {
+  document.querySelectorAll('.customer-cb').forEach(cb => cb.checked = false);
+  const sa = document.getElementById('customers-select-all');
+  if(sa) sa.checked = false;
+  updateCustomerBulkBar();
+}
+function bulkDeleteCustomers() {
+  const ids = [...document.querySelectorAll('.customer-cb:checked')].map(cb => parseInt(cb.dataset.id));
+  if(!ids.length) return;
+  if(!confirm('Delete ' + ids.length + ' customer(s)? This cannot be undone.')) return;
+  customers = customers.filter(c => !ids.includes(c.id));
+  saveToLocalStorage(); saveToServer();
+  renderCustomers(); updateBadges();
+  showToast('\uD83D\uDDD1\uFE0F Deleted ' + ids.length + ' customers');
+}
+
+function updateContractBulkBar() {
+  const cbs = document.querySelectorAll('.contract-cb:checked');
+  const bar = document.getElementById('contracts-bulk-bar');
+  const countEl = document.getElementById('contracts-selected-count');
+  if(!bar) return;
+  bar.style.display = cbs.length > 0 ? 'flex' : 'none';
+  if(countEl) countEl.textContent = cbs.length + ' selected';
+  const all = document.querySelectorAll('.contract-cb');
+  const sa = document.getElementById('contracts-select-all');
+  if(sa) sa.checked = all.length > 0 && cbs.length === all.length;
+}
+function toggleAllContracts(checked) {
+  document.querySelectorAll('.contract-cb').forEach(cb => cb.checked = checked);
+  updateContractBulkBar();
+}
+function clearContractSelection() {
+  document.querySelectorAll('.contract-cb').forEach(cb => cb.checked = false);
+  const sa = document.getElementById('contracts-select-all');
+  if(sa) sa.checked = false;
+  updateContractBulkBar();
+}
+function bulkDeleteContracts() {
+  const ids = [...document.querySelectorAll('.contract-cb:checked')].map(cb => parseInt(cb.dataset.id));
+  if(!ids.length) return;
+  if(!confirm('Delete ' + ids.length + ' contract(s)? This cannot be undone.')) return;
+  contracts = contracts.filter(c => !ids.includes(c.id));
+  saveToLocalStorage(); saveToServer();
+  renderContracts(); renderDashboard(); updateBadges();
+  showToast('\uD83D\uDDD1\uFE0F Deleted ' + ids.length + ' contracts');
 }
 function deleteTicket(id) {
   if(!confirm('Delete this ticket?')) return;
@@ -2252,6 +2333,7 @@ function renderCustomers() {
   tbody.innerHTML = filtered.length ? filtered.map(c=>{
     const ticketCount = tickets.filter(t=>t.customerId==c.id&&(t.status==='open'||t.status==='in_progress')).length;
     return `<tr>
+      <td><input type="checkbox" class="customer-cb" data-id="${c.id}" onchange="updateCustomerBulkBar()" style="accent-color:var(--accent);cursor:pointer;"></td>
       <td style="font-weight:600">${c.name}</td>
       <td>${c.contact}<br><small style="color:var(--text2)">${c.role}</small></td>
       <td>${c.phone}</td>
@@ -2263,7 +2345,11 @@ function renderCustomers() {
         <button class="btn btn-danger btn-sm" onclick="deleteCustomer(${c.id})">🗑️</button>
       </div></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty-state"><div class="icon">👥</div>No customers found</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty-state"><div class="icon">👥</div>No customers found</td></tr>';
+  // Reset select-all checkbox
+  const sa = document.getElementById('customers-select-all');
+  if(sa) sa.checked = false;
+  updateCustomerBulkBar();
 }
 
 function renderContracts() {
@@ -2283,6 +2369,7 @@ function renderContracts() {
     else if(d<=30) expiryHtml=`<span class="expire-soon">🟡 ${d} days</span>`;
     else expiryHtml=`<span class="expire-ok">${d} days</span>`;
     return `<tr>
+      <td><input type="checkbox" class="contract-cb" data-id="${c.id}" onchange="updateContractBulkBar()" style="accent-color:var(--accent);cursor:pointer;"></td>
       <td style="font-weight:600">${getCustomerName(c.customerId)}</td>
       <td>${c.type}</td>
       <td>${formatDate(c.start)}</td>
@@ -2295,7 +2382,10 @@ function renderContracts() {
         <button class="btn btn-danger btn-sm" onclick="deleteContract(${c.id})">🗑️</button>
       </div></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty-state"><div class="icon">📋</div>No contracts found</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="empty-state"><div class="icon">📋</div>No contracts found</td></tr>';
+  const sa = document.getElementById('contracts-select-all');
+  if(sa) sa.checked = false;
+  updateContractBulkBar();
 }
 
 function renderTickets() {
