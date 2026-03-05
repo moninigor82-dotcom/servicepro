@@ -571,6 +571,53 @@
 <body>
 
 <!-- SIDEBAR -->
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:40px;width:340px;max-width:90vw;box-shadow:0 24px 60px rgba(0,0,0,.5);">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div id="login-logo-icon" style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;">⚡</div>
+      <div style="font-size:20px;font-weight:800;font-family:'Space Grotesk',sans-serif;" id="login-app-name">SERVICEPRO</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:4px;">Enter your access code</div>
+    </div>
+    <div id="login-role-tabs" style="display:flex;gap:8px;margin-bottom:20px;">
+      <button onclick="setLoginRole('admin')" id="login-tab-admin" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--accent);background:rgba(79,142,247,.15);color:var(--accent);font-weight:700;cursor:pointer;font-size:13px;font-family:'Rubik',sans-serif;">👑 Manager</button>
+      <button onclick="setLoginRole('tech')" id="login-tab-tech" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:700;cursor:pointer;font-size:13px;font-family:'Rubik',sans-serif;">🔧 Technician</button>
+    </div>
+    <div style="margin-bottom:16px;">
+      <input id="login-code-input" type="password" placeholder="Enter code..." maxlength="20"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:13px 16px;color:var(--text);font-size:16px;font-family:'Rubik',sans-serif;outline:none;letter-spacing:4px;text-align:center;"
+        onkeydown="if(event.key==='Enter')tryLogin()">
+    </div>
+    <div id="login-error" style="color:var(--red);font-size:13px;text-align:center;margin-bottom:12px;display:none;">❌ Wrong code. Try again.</div>
+    <button onclick="tryLogin()" style="width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:'Rubik',sans-serif;">Enter →</button>
+    <div id="login-setup-hint" style="margin-top:16px;text-align:center;font-size:11px;color:var(--text2);display:none;">
+      💡 Set codes in Settings → Access Codes
+    </div>
+  </div>
+</div>
+
+<!-- TICKET VIEW MODAL (for technicians) -->
+<div class="modal-overlay" id="ticket-view-modal">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-header">
+      <span id="tv-ticket-id" style="font-weight:800;color:var(--accent);font-size:18px;">TK-001</span>
+      <button class="modal-close" onclick="closeModal('ticket-view-modal')">✕</button>
+    </div>
+    <div id="tv-content" style="padding:4px 0;"></div>
+    <!-- Work report section for technicians -->
+    <div id="tv-report-section" style="margin-top:18px;border-top:1px solid var(--border);padding-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px;">✅ Add Work Report</div>
+      <textarea id="tv-work-report" placeholder="Describe what was done..." style="width:100%;min-height:90px;margin-bottom:8px;border-color:rgba(18,217,146,.3);"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="tv-time-spent" type="text" placeholder="⏱ Time spent (e.g. 2h)" style="flex:1;min-width:100px;">
+        <input id="tv-work-date" type="date" style="flex:1;min-width:120px;">
+        <input id="tv-parts-used" type="text" placeholder="🔧 Parts used" style="flex:1;min-width:120px;">
+      </div>
+      <button onclick="saveTechWorkReport()" style="margin-top:12px;width:100%;padding:11px;border-radius:10px;background:linear-gradient(135deg,var(--green),var(--accent2));border:none;color:white;font-size:14px;font-weight:700;cursor:pointer;font-family:'Rubik',sans-serif;">💾 Save Work Report</button>
+    </div>
+  </div>
+</div>
+
 <aside class="sidebar" style="position:fixed;right:0;top:0;height:100%;height:-webkit-fill-available;width:var(--sidebar-w);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:100;overflow-y:auto;-webkit-overflow-scrolling:touch;">
   <div class="logo">
     <div class="logo-mark">
@@ -620,6 +667,10 @@
   </div>
   </div>
   <div style="margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <span id="role-badge" style="font-size:12px;font-weight:700;">👑 Manager</span>
+      <button id="logout-btn" onclick="logout()" style="display:none;background:rgba(240,82,82,.1);border:1px solid rgba(240,82,82,.3);border-radius:6px;padding:4px 10px;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;font-family:'Rubik',sans-serif;">Logout</button>
+    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <span style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;">Theme</span>
       <div style="display:flex;align-items:center;gap:7px;">
@@ -1031,6 +1082,35 @@
             From: SERVICEPRO-NEWVISION &lt;noreply@yourcompany.com&gt;
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Access Codes -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-header"><span class="card-title">🔐 Access Codes</span></div>
+      <div style="padding:20px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <label style="font-size:12px;color:var(--text2);font-weight:700;display:block;margin-bottom:6px;">👑 Manager Code</label>
+            <div style="display:flex;gap:8px;">
+              <input id="set-admin-code" type="password" placeholder="Set manager code..." style="flex:1;">
+              <button onclick="toggleCodeVisibility('set-admin-code')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--text2);">👁</button>
+            </div>
+            <small style="color:var(--text2);font-size:11px;margin-top:4px;display:block;">Full access to all features</small>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);font-weight:700;display:block;margin-bottom:6px;">🔧 Technician Code</label>
+            <div style="display:flex;gap:8px;">
+              <input id="set-tech-code" type="password" placeholder="Set technician code..." style="flex:1;">
+              <button onclick="toggleCodeVisibility('set-tech-code')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--text2);">👁</button>
+            </div>
+            <small style="color:var(--text2);font-size:11px;margin-top:4px;display:block;">View tickets + add work reports</small>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding:12px;background:rgba(79,142,247,.08);border-radius:8px;border:1px solid rgba(79,142,247,.2);font-size:12px;color:var(--text2);">
+          💡 Codes are saved locally. Share technician code with your team. Keep manager code private.
+        </div>
+        <button onclick="saveAccessCodes()" class="btn btn-primary" style="margin-top:14px;">💾 Save Codes</button>
       </div>
     </div>
 
@@ -1718,6 +1798,7 @@ function showPage(id) {
   if(id==='settings') {
     loadSettingsToForm();
     renderTechList();
+    loadAccessCodes();
     gsLoadConfig();
     const urlEl = document.getElementById('gs-webhook-url');
     const intEl = document.getElementById('gs-auto-interval');
@@ -2154,7 +2235,7 @@ function renderTickets() {
     var updateHtml = t.update ? '<br><small style="color:var(--text2)">↳ '+t.update.substring(0,40)+(t.update.length>40?'...':'')+'</small>' : '';
     var tid = t.id;
     return '<tr>'
-      +'<td style="font-weight:700;color:var(--accent)">'+tid+'</td>'
+      +'<td><span style="font-weight:700;color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="openTicketView(&quot;'+tid+'&quot;)">'+tid+'</span></td>'
       +'<td>'+cust+'</td>'
       +'<td style="max-width:180px;">'+t.subject+updateHtml+'</td>'
       +'<td class="'+pClass+'">'+priorityLabel(t.priority)+'</td>'
@@ -3587,6 +3668,195 @@ document.addEventListener('change', e => {
   }
 });
 
+// ===== AUTH SYSTEM =====
+let currentRole = null; // 'admin' | 'tech' | null
+let loginRole = 'admin';
+
+function setLoginRole(role) {
+  loginRole = role;
+  document.getElementById('login-tab-admin').style.borderColor = role==='admin' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('login-tab-admin').style.background = role==='admin' ? 'rgba(79,142,247,.15)' : 'transparent';
+  document.getElementById('login-tab-admin').style.color = role==='admin' ? 'var(--accent)' : 'var(--text2)';
+  document.getElementById('login-tab-tech').style.borderColor = role==='tech' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('login-tab-tech').style.background = role==='tech' ? 'rgba(79,142,247,.15)' : 'transparent';
+  document.getElementById('login-tab-tech').style.color = role==='tech' ? 'var(--accent)' : 'var(--text2)';
+}
+
+function tryLogin() {
+  const input = document.getElementById('login-code-input').value;
+  const adminCode = localStorage.getItem('sp_admin_code') || '1234';
+  const techCode = localStorage.getItem('sp_tech_code') || '';
+
+  let ok = false;
+  if(loginRole === 'admin' && input === adminCode) { currentRole = 'admin'; ok = true; }
+  else if(loginRole === 'tech' && techCode && input === techCode) { currentRole = 'tech'; ok = true; }
+  else if(loginRole === 'admin' && !localStorage.getItem('sp_admin_code') && input === '1234') { currentRole = 'admin'; ok = true; }
+
+  if(ok) {
+    sessionStorage.setItem('sp_role', currentRole);
+    document.getElementById('login-screen').style.display = 'none';
+    applyRoleUI();
+    showToast(currentRole==='admin' ? '👑 Manager access granted' : '🔧 Technician access granted');
+  } else {
+    const err = document.getElementById('login-error');
+    err.style.display = 'block';
+    document.getElementById('login-code-input').value = '';
+    setTimeout(()=>err.style.display='none', 3000);
+  }
+}
+
+function applyRoleUI() {
+  const isTech = currentRole === 'tech';
+  // Hide management elements for technicians
+  const adminOnly = document.querySelectorAll('.admin-only');
+  adminOnly.forEach(el => el.style.display = isTech ? 'none' : '');
+  // Show/hide nav items
+  ['customers','contracts','projects','sla','calendar','alerts','settings'].forEach(page => {
+    const navItem = document.querySelector(`[onclick="showPage('${page}')"]`);
+    if(navItem) navItem.style.display = isTech ? 'none' : '';
+  });
+  // Show logout button
+  const logoutBtn = document.getElementById('logout-btn');
+  if(logoutBtn) logoutBtn.style.display = '';
+  // Show role badge
+  const roleBadge = document.getElementById('role-badge');
+  if(roleBadge) {
+    roleBadge.textContent = isTech ? '🔧 Technician' : '👑 Manager';
+    roleBadge.style.color = isTech ? 'var(--green)' : 'var(--accent)';
+  }
+  if(isTech) showPage('tickets');
+}
+
+function logout() {
+  currentRole = null;
+  sessionStorage.removeItem('sp_role');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-code-input').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  // Restore nav
+  ['customers','contracts','projects','sla','calendar','alerts','settings'].forEach(page => {
+    const navItem = document.querySelector(`[onclick="showPage('${page}')"]`);
+    if(navItem) navItem.style.display = '';
+  });
+}
+
+function checkAuth() {
+  const saved = sessionStorage.getItem('sp_role');
+  const adminCode = localStorage.getItem('sp_admin_code');
+  // If no admin code set yet — show setup hint and go straight in as admin
+  if(!adminCode) {
+    currentRole = 'admin';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('login-setup-hint').style.display = 'block';
+    applyRoleUI();
+    return;
+  }
+  if(saved) {
+    currentRole = saved;
+    document.getElementById('login-screen').style.display = 'none';
+    applyRoleUI();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+}
+
+function toggleCodeVisibility(inputId) {
+  const inp = document.getElementById(inputId);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function saveAccessCodes() {
+  const adminCode = document.getElementById('set-admin-code')?.value;
+  const techCode = document.getElementById('set-tech-code')?.value;
+  if(adminCode) localStorage.setItem('sp_admin_code', adminCode);
+  if(techCode) localStorage.setItem('sp_tech_code', techCode);
+  showToast('✅ Access codes saved');
+}
+
+function loadAccessCodes() {
+  const adminInp = document.getElementById('set-admin-code');
+  const techInp = document.getElementById('set-tech-code');
+  if(adminInp) adminInp.placeholder = localStorage.getItem('sp_admin_code') ? '••••••' : 'Not set (default: 1234)';
+  if(techInp) techInp.placeholder = localStorage.getItem('sp_tech_code') ? '••••••' : 'Not set';
+}
+
+// ===== TICKET VIEW (for all roles — info only for tech) =====
+function openTicketView(ticketId) {
+  const t = tickets.find(x=>x.id===ticketId);
+  if(!t) return;
+  const c = customers.find(x=>x.id==t.customerId);
+  const contract = contracts.find(x=>x.customerId==t.customerId&&x.status==='active');
+  const slaObj = contract && slas.find(s=>s.id==contract.slaId);
+
+  document.getElementById('tv-ticket-id').textContent = t.id;
+
+  const fields = [
+    ['Customer', c ? c.name : 'Unknown'],
+    ['Subject', t.subject],
+    ['Category', t.category||'—'],
+    ['Priority', priorityLabel(t.priority)],
+    ['Status', t.status?.replace('_',' ')],
+    ['Technician', t.assignee||'Not assigned'],
+    ['Created', formatDate(t.created)],
+    ['SLA', slaObj ? slaObj.name+' ('+slaObj.response+')' : 'None'],
+  ];
+
+  let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">';
+  fields.forEach(([label, val]) => {
+    html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">${label}</div>
+      <div style="font-size:13px;font-weight:600;">${val}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  if(t.description) {
+    html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--text2);font-weight:700;text-transform:uppercase;margin-bottom:6px;">Description</div>
+      <div style="font-size:13px;line-height:1.6;">${t.description}</div>
+    </div>`;
+  }
+
+  if(t.workReport) {
+    html += `<div style="background:rgba(18,217,146,.08);border:1px solid rgba(18,217,146,.25);border-radius:8px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:10px;color:var(--green);font-weight:700;text-transform:uppercase;margin-bottom:6px;">✅ Work Report</div>
+      <div style="font-size:13px;line-height:1.6;">${t.workReport}</div>
+      ${t.timeSpent?`<div style="font-size:12px;color:var(--text2);margin-top:6px;">⏱ Time: ${t.timeSpent}</div>`:''}
+      ${t.partsUsed?`<div style="font-size:12px;color:var(--text2);">🔧 Parts: ${t.partsUsed}</div>`:''}
+    </div>`;
+  }
+
+  document.getElementById('tv-content').innerHTML = html;
+
+  // Pre-fill report fields if exists
+  document.getElementById('tv-work-report').value = t.workReport||'';
+  document.getElementById('tv-time-spent').value = t.timeSpent||'';
+  document.getElementById('tv-work-date').value = t.workDate||new Date().toISOString().split('T')[0];
+  document.getElementById('tv-parts-used').value = t.partsUsed||'';
+
+  // Show/hide report section based on role
+  const reportSection = document.getElementById('tv-report-section');
+  reportSection.style.display = currentRole==='tech' || currentRole==='admin' ? '' : 'none';
+  // Store current ticket id
+  document.getElementById('ticket-view-modal').dataset.ticketId = ticketId;
+  document.getElementById('ticket-view-modal').classList.add('open');
+}
+
+function saveTechWorkReport() {
+  const ticketId = document.getElementById('ticket-view-modal').dataset.ticketId;
+  const t = tickets.find(x=>x.id===ticketId);
+  if(!t) return;
+  t.workReport = document.getElementById('tv-work-report').value;
+  t.timeSpent = document.getElementById('tv-time-spent').value;
+  t.workDate = document.getElementById('tv-work-date').value;
+  t.partsUsed = document.getElementById('tv-parts-used').value;
+  addTicketHistory(ticketId, 'Work report updated by '+(currentRole==='admin'?'manager':'technician'));
+  saveToLocalStorage(); saveToServer();
+  renderTickets();
+  closeModal('ticket-view-modal');
+  showToast('✅ Work report saved for '+ticketId);
+}
+
 // ===== THEME TOGGLE =====
 function toggleTheme() {
   const html = document.documentElement;
@@ -3870,6 +4140,7 @@ function initDrag(){
   });
 }
 setTimeout(()=>{ initDrag(); }, 600);
+setTimeout(()=>{ checkAuth(); }, 100);
 </script>
 </body>
 </html>
