@@ -67,17 +67,17 @@
     display: flex; align-items: center; gap: 11px; margin-bottom: 7px;
   }
   .logo-icon-wrap {
-    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    width: 58px; height: 58px; border-radius: 14px; flex-shrink: 0;
     background: linear-gradient(135deg, #4f8ef7, #06d6c7);
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 18px rgba(79,142,247,.38);
     overflow: hidden; cursor: pointer; position: relative;
   }
   .logo-icon-wrap img {
-    width: 100%; height: 100%; object-fit: cover; border-radius: 12px;
+    width: 100%; height: 100%; object-fit: cover; border-radius: 14px;
   }
   .logo-icon-wrap .logo-icon-default {
-    font-size: 22px;
+    font-size: 30px;
   }
   .logo-icon-wrap:hover::after {
     content: '📷';
@@ -2139,7 +2139,7 @@ function renderDashboard() {
   const tbody = document.getElementById('dash-tickets-tbody');
   const recent = [...tickets].sort((a,b)=>b.created.localeCompare(a.created)).slice(0,5);
   tbody.innerHTML = recent.map(t=>`<tr>
-    <td style="font-weight:700;color:var(--accent)">${t.id}</td>
+    <td><span style="font-weight:700;color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="openTicketView('${t.id}')">${t.id}</span></td>
     <td>${getCustomerName(t.customerId)}</td>
     <td>${t.subject}</td>
     <td class="priority-${t.priority==='critical'?'high':t.priority==='high'?'high':t.priority==='medium'?'med':'low'}">${priorityLabel(t.priority)}</td>
@@ -2968,13 +2968,21 @@ function clearLogo() {
 function applyLogoToSidebar() {
   const img = document.getElementById('logo-img');
   const emoji = document.getElementById('logo-icon-emoji');
+  const navbarIcon = document.getElementById('navbar-logo-icon');
   if(logoDataUrl && img) {
     img.src = logoDataUrl;
     img.style.display = 'block';
     if(emoji) emoji.style.display = 'none';
+    // Update navbar icon with image
+    if(navbarIcon) {
+      navbarIcon.innerHTML = `<img src="${logoDataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`;
+    }
   } else {
     if(img) { img.src=''; img.style.display='none'; }
-    if(emoji) { emoji.style.display='block'; emoji.textContent = logoEmoji || '⚡'; }
+    const em = logoEmoji || '⚡';
+    if(emoji) { emoji.style.display='block'; emoji.textContent = em; }
+    // Update navbar icon with emoji
+    if(navbarIcon) navbarIcon.textContent = em;
   }
 }
 
