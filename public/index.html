@@ -1829,6 +1829,7 @@ saveToLocalStorage = function() {
 let customers = [];
 let contracts = [];
 let tickets = [];
+let dismissedAlerts = new Set(); // ids of dismissed alerts: "contract-ID"
 let projects = [];
 let slas = [];
 let editingId = null;
@@ -2348,11 +2349,12 @@ function deleteProject(id) {
 function renderDashboard() {
   const openTickets = tickets.filter(t=>t.status==='open'||t.status==='in_progress');
   const activeProjects = projects.filter(p=>p.status==='active');
-  const expiringContracts = contracts.filter(c=>{ const d=daysUntil(c.end); return d>=0&&d<=30&&c.status==='active'; });
-  document.getElementById('dash-customers').textContent = customers.filter(c=>c.status==='active').length;
+  // Count contracts expiring soon (≤30 days) or already expired — by date
+  const expiringCount = contracts.filter(c=>c.end && daysUntil(c.end)<=30).length;
+  document.getElementById('dash-customers').textContent = customers.length;
   document.getElementById('dash-open-tickets').textContent = openTickets.length;
   document.getElementById('dash-projects').textContent = activeProjects.length;
-  document.getElementById('dash-expiring').textContent = expiringContracts.length;
+  document.getElementById('dash-expiring').textContent = expiringCount;
 
   const tbody = document.getElementById('dash-tickets-tbody');
   const recent = [...tickets].sort((a,b)=>b.created.localeCompare(a.created)).slice(0,5);
@@ -2366,17 +2368,25 @@ function renderDashboard() {
   </tr>`).join('');
 
   const expTbody = document.getElementById('dash-expiring-tbody');
-  const expiring = contracts.filter(c=>{ const d=daysUntil(c.end); return d<=30; }).sort((a,b)=>daysUntil(a.end)-daysUntil(b.end));
+  // Show only upcoming expiring (next 60 days) and recently expired (last 90 days), sorted by urgency
+  const expiring = contracts
+    .filter(c=>c.end && daysUntil(c.end)<=60 && daysUntil(c.end)>=-90)
+    .filter(c=>!dismissedAlerts.has('contract-'+c.id))
+    .sort((a,b)=>daysUntil(a.end)-daysUntil(b.end))
+    .slice(0,20);
   expTbody.innerHTML = expiring.length ? expiring.map(c=>{
     const d = daysUntil(c.end);
     let cls = d<0?'expire-warning':d<=7?'expire-warning':d<=30?'expire-soon':'expire-ok';
-    let txt = d<0?`Expired ${-d} days ago`:d===0?'Expired today':`${d} days`;
+    let txt = d<0?`Expired ${-d} days ago`:d===0?'Expires today':`${d} days`;
     return `<tr>
       <td>${getCustomerName(c.customerId, c)}</td>
       <td>${c.type}</td>
       <td>${formatDate(c.end)}</td>
       <td class="${cls}">${txt}</td>
-      <td><button class="btn btn-primary btn-sm" onclick="openModal('contract-modal',${c.id})">Renew</button></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-primary btn-sm" onclick="openModal('contract-modal',${c.id})">Renew</button>
+        <button class="btn btn-secondary btn-sm" title="Dismiss" onclick="dismissAlert('contract-${c.id}')">✕</button>
+      </td>
     </tr>`;
   }).join('') : '<tr><td colspan="5" class="empty-state">No contracts expiring soon ✓</td></tr>';
 }
@@ -2845,6 +2855,8 @@ renderAlerts = function() {
     const emailBtn = (a.action==='contracts' && a.contractId)
       ? `<button class="btn btn-primary btn-sm" onclick="openContractEmail(${a.contractId})">✉️ Send Renewal Email</button>`
       : '';
+    const dismissKey = a.contractId ? `contract-${a.contractId}` : (a.ticketId ? `ticket-${a.ticketId}` : '');
+    const dismissBtn = dismissKey ? `<button class="btn btn-secondary btn-sm" title="Dismiss alert" onclick="dismissAlert('${dismissKey}')">✕ Dismiss</button>` : '';
     return `
     <div class="alert-item ${a.type}">
       <div class="alert-icon">${a.icon}</div>
@@ -2854,6 +2866,7 @@ renderAlerts = function() {
         <div class="alert-actions">
           <button class="btn btn-secondary btn-sm" onclick="showPage('${a.action}')">Go to page →</button>
           ${emailBtn}
+          ${dismissBtn}
         </div>
       </div>
     </div>`;
@@ -2861,6 +2874,22 @@ renderAlerts = function() {
 };
 
 
+
+function dismissAlert(key) {
+  dismissedAlerts.add(key);
+  // Persist in sessionStorage so it survives tab, but resets on fresh open
+  try { sessionStorage.setItem('sp_dismissed', JSON.stringify([...dismissedAlerts])); } catch(e){}
+  renderDashboard();
+  renderAlerts();
+  renderNotifPanel();
+}
+
+function loadDismissedAlerts() {
+  try {
+    const raw = sessionStorage.getItem('sp_dismissed');
+    if(raw) dismissedAlerts = new Set(JSON.parse(raw));
+  } catch(e){}
+}
 
 function getAlerts() {
   const alerts = [];
@@ -2875,15 +2904,15 @@ function getAlerts() {
     alerts.push({ type:'warning', icon:'🟠', title:`Urgent Ticket: ${t.id}`, desc:`${getCustomerName(t.customerId)} — ${t.subject}`, action:'tickets' });
   });
   // Contracts expiring within 7 days
-  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d>=0&&d<=7; }).forEach(c=>{
+  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d>=0&&d<=7 && !dismissedAlerts.has('contract-'+c.id); }).forEach(c=>{
     alerts.push({ type:'critical', icon:'⚠️', title:`Contract expires in ${daysUntil(c.end)} days!`, desc:`${getCustomerName(c.customerId, c)} — ${c.type}`, action:'contracts', contractId:c.id });
   });
   // Contracts expiring within 30 days
-  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d>7&&d<=30; }).forEach(c=>{
+  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d>7&&d<=30 && !dismissedAlerts.has('contract-'+c.id); }).forEach(c=>{
     alerts.push({ type:'warning', icon:'📋', title:`Contract expires in ${daysUntil(c.end)} days`, desc:`${getCustomerName(c.customerId, c)} — ${c.type}`, action:'contracts', contractId:c.id });
   });
-  // Expired contracts (by date, regardless of status field)
-  contracts.filter(c=>c.end && daysUntil(c.end)<0).forEach(c=>{
+  // Expired contracts (last 90 days only, to avoid ancient history)
+  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d<0 && d>=-90 && !dismissedAlerts.has('contract-'+c.id); }).forEach(c=>{
     alerts.push({ type:'critical', icon:'❌', title:`Contract expired!`, desc:`${getCustomerName(c.customerId, c)} — expired ${-daysUntil(c.end)} days ago`, action:'contracts', contractId:c.id });
   });
   // Projects ending soon
@@ -4826,6 +4855,7 @@ function mergeExcelContracts() {
   }
   applySettingsToUI();
   applyLogoToSidebar();
+  loadDismissedAlerts();
   mergeExcelContracts();
   renderDashboard();
   updateBadges();
