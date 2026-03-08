@@ -2593,12 +2593,24 @@ function filterProjects(f, btn) {
 
 function updateBadges() {
   const open = tickets.filter(t=>t.status==='open'||t.status==='in_progress').length;
-  // Badge = expiring (≤30 days) + expired contracts
-  const expiring = contracts.filter(c=>{ const d=daysUntil(c.end); return d>=0&&d<=30; }).length;
-  const expired = contracts.filter(c=>{ const d=daysUntil(c.end); return d<0; }).length;
-  const contractAlert = expiring + expired;
-  document.getElementById('open-badge').textContent = open;
-  document.getElementById('expiring-badge').textContent = contractAlert || '';
+  // Service Contracts badge = total count
+  const totalContracts = contracts.length;
+  // Alerts badge = actual alert count
+  const alertCount = getAlerts().length;
+  const openBadge = document.getElementById('open-badge');
+  const expiringBadge = document.getElementById('expiring-badge');
+  const alertsBadge = document.getElementById('alerts-badge');
+  const bellCount = document.getElementById('bell-count');
+  if(openBadge) openBadge.textContent = open;
+  if(expiringBadge) expiringBadge.textContent = totalContracts || '';
+  if(alertsBadge) alertsBadge.textContent = alertCount || '';
+  if(bellCount) bellCount.textContent = alertCount;
+  // Color bell red if alerts exist
+  const bell = document.getElementById('bell-btn');
+  if(bell) {
+    bell.style.borderColor = alertCount > 0 ? 'var(--red)' : '';
+    bell.style.color = alertCount > 0 ? 'var(--red)' : '';
+  }
 }
 
 
@@ -2953,11 +2965,8 @@ function renderAlerts() {
 function renderNotifPanel() {
   const alerts = getAlerts();
   const list = document.getElementById('notif-list');
-  const count = alerts.length;
-  document.getElementById('bell-count').textContent = count;
-  document.getElementById('alerts-badge').textContent = count;
-  if(document.getElementById('open-badge')) updateBadges();
-  if(!count) {
+  updateBadges();
+  if(!alerts.length) {
     list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text2)">✅ No alerts</div>';
     return;
   }
@@ -4856,18 +4865,15 @@ function mergeExcelContracts() {
   mergeExcelContracts();
   renderDashboard();
   updateBadges();
+  renderNotifPanel();
   initCal();
 })();
 
 setTimeout(()=>{
-  renderNotifPanel();
   addDashExport();
   applySettingsToUI();
-  const cnt = getAlerts().length;
-  if (cnt > 0) {
-    const bell = document.getElementById('bell-btn');
-    if (bell) { bell.style.borderColor='var(--red)'; bell.style.color='var(--red)'; }
-  }
+  updateBadges();
+  renderNotifPanel();
 }, 200);
 function initDrag(){
   document.querySelectorAll('.modal-overlay').forEach(function(overlay){
