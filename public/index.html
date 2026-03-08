@@ -1514,6 +1514,23 @@ function doGet(e) {
         <select id="ct-status"><option value="active">Active</option><option value="pending">Pending</option><option value="expired">Expired</option></select>
       </div>
       <div class="form-group full"><label>What the contract includes</label><textarea id="ct-includes" placeholder="Technical support, maintenance, updates..."></textarea></div>
+      <div class="form-group full">
+        <label>📎 Attach Contract File (PDF / Word / any)</label>
+        <div id="ct-file-area" style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('ct-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor=''" ondrop="handleContractFileDrop(event)">
+          <div id="ct-file-placeholder" style="color:var(--text2);font-size:13px;">
+            🗂️ Click to upload or drag & drop<br><small>PDF, DOC, DOCX, JPG, PNG — max 10MB</small>
+          </div>
+          <div id="ct-file-preview" style="display:none;align-items:center;gap:10px;justify-content:center;">
+            <span id="ct-file-icon" style="font-size:24px;">📄</span>
+            <div style="text-align:left;">
+              <div id="ct-file-name" style="font-weight:600;font-size:13px;color:var(--text);"></div>
+              <div id="ct-file-size" style="font-size:11px;color:var(--text2);"></div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();clearContractFile()" style="margin-left:8px;">✕</button>
+          </div>
+        </div>
+        <input type="file" id="ct-file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" style="display:none" onchange="handleContractFileSelect(event)">
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('contract-modal')">Cancel</button>
@@ -1522,7 +1539,17 @@ function doGet(e) {
   </div>
 </div>
 
-<!-- Ticket Modal -->
+<!-- Contract File Viewer Modal -->
+<div class="modal-overlay" id="contract-file-modal">
+  <div class="modal" style="max-width:860px;width:95vw;max-height:90vh;display:flex;flex-direction:column;">
+    <div class="modal-title" id="contract-file-modal-title">📄 Contract Document</div>
+    <div id="contract-file-viewer" style="flex:1;min-height:500px;overflow:auto;background:#1a1a2e;border-radius:8px;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-primary btn-sm" id="contract-file-download-btn">⬇ Download</button>
+      <button class="btn btn-secondary" onclick="closeModal('contract-file-modal')">Close</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="ticket-modal">
   <div class="modal" style="width:700px;max-width:98vw;">
     <div class="modal-title" id="ticket-modal-title">Open Service Ticket</div>
@@ -2057,6 +2084,14 @@ function openModal(id, editId=null) {
         document.getElementById('ct-includes').value = c.includes||'';
         const slaSel = document.getElementById('ct-sla');
         if(slaSel) slaSel.value = c.slaId||'';
+        // Show existing file if any
+        window._pendingContractFile = null;
+        if(c.fileData && c.fileName) {
+          const bytes = Math.round(c.fileData.length * 0.75);
+          showContractFilePreview(c.fileName, bytes);
+        } else {
+          clearContractFile();
+        }
         // Update title with customer name
         const custName = c.customerNameRaw || (customers.find(x=>x.id==c.customerId)?.name) || '';
         if(custName) document.getElementById('contract-modal-title').textContent = `Edit Contract — ${custName}`;
@@ -2069,6 +2104,7 @@ function openModal(id, editId=null) {
       document.getElementById('ct-value').value='';
       document.getElementById('ct-status').value='active';
       document.getElementById('ct-includes').value='';
+      clearContractFile();
     }
   }
   if(id==='project-modal' && editId) {
@@ -2168,6 +2204,7 @@ function saveContract() {
     customerId = parseInt(cidRaw);
     customerNameRaw = null;
   }
+  const existing = editingId ? contracts.find(c=>c.id==editingId) : null;
   const obj = {
     id: editingId || Date.now(),
     customerId,
@@ -2178,11 +2215,103 @@ function saveContract() {
     value: parseInt(document.getElementById('ct-value').value)||0,
     status: document.getElementById('ct-status').value,
     includes: document.getElementById('ct-includes').value,
+    // Preserve or update file attachment
+    fileData: window._pendingContractFile ? window._pendingContractFile.data : (existing?.fileData||null),
+    fileName: window._pendingContractFile ? window._pendingContractFile.name : (existing?.fileName||null),
+    fileType: window._pendingContractFile ? window._pendingContractFile.type : (existing?.fileType||null),
   };
+  window._pendingContractFile = null;
   if(editingId) { const i = contracts.findIndex(c=>c.id==editingId); contracts[i]=obj; }
   else contracts.push(obj);
   closeModal('contract-modal');
   renderContracts(); renderDashboard(); updateBadges();
+}
+
+// ===== CONTRACT FILE ATTACHMENT =====
+let _pendingContractFile = null;
+
+function getFileIcon(name) {
+  if(!name) return '📄';
+  const ext = name.split('.').pop().toLowerCase();
+  if(ext==='pdf') return '📕';
+  if(['doc','docx'].includes(ext)) return '📘';
+  if(['xls','xlsx'].includes(ext)) return '📗';
+  if(['jpg','jpeg','png','gif'].includes(ext)) return '🖼️';
+  return '📄';
+}
+
+function showContractFilePreview(name, sizeBytes) {
+  document.getElementById('ct-file-placeholder').style.display = 'none';
+  const prev = document.getElementById('ct-file-preview');
+  prev.style.display = 'flex';
+  document.getElementById('ct-file-icon').textContent = getFileIcon(name);
+  document.getElementById('ct-file-name').textContent = name;
+  const kb = (sizeBytes/1024).toFixed(1);
+  const mb = (sizeBytes/1024/1024).toFixed(2);
+  document.getElementById('ct-file-size').textContent = sizeBytes > 1048576 ? mb+' MB' : kb+' KB';
+}
+
+function clearContractFile() {
+  window._pendingContractFile = null;
+  document.getElementById('ct-file-placeholder').style.display = '';
+  document.getElementById('ct-file-preview').style.display = 'none';
+  document.getElementById('ct-file-input').value = '';
+}
+
+function handleContractFileSelect(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  if(file.size > 10*1024*1024) { alert('File too large (max 10MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pendingContractFile = { data: e.target.result, name: file.name, type: file.type };
+    showContractFilePreview(file.name, file.size);
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleContractFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('ct-file-area').style.borderColor = '';
+  const file = event.dataTransfer.files[0];
+  if(!file) return;
+  if(file.size > 10*1024*1024) { alert('File too large (max 10MB)'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pendingContractFile = { data: e.target.result, name: file.name, type: file.type };
+    showContractFilePreview(file.name, file.size);
+  };
+  reader.readAsDataURL(file);
+}
+
+function viewContractFile(contractId) {
+  const c = contracts.find(x=>x.id==contractId);
+  if(!c || !c.fileData) return alert('No file attached to this contract');
+  const modal = document.getElementById('contract-file-modal');
+  document.getElementById('contract-file-modal-title').textContent = getFileIcon(c.fileName) + ' ' + (c.fileName||'Contract Document') + ' — ' + getCustomerName(c.customerId, c);
+  const viewer = document.getElementById('contract-file-viewer');
+  const ext = (c.fileName||'').split('.').pop().toLowerCase();
+  if(ext === 'pdf') {
+    viewer.innerHTML = `<iframe src="${c.fileData}" style="width:100%;height:560px;border:none;border-radius:6px;"></iframe>`;
+  } else if(['jpg','jpeg','png','gif'].includes(ext)) {
+    viewer.innerHTML = `<img src="${c.fileData}" style="max-width:100%;max-height:560px;display:block;margin:auto;border-radius:6px;">`;
+  } else {
+    viewer.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text2);">
+      <div style="font-size:64px;margin-bottom:16px;">${getFileIcon(c.fileName)}</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px;">${c.fileName}</div>
+      <div style="margin-bottom:24px;">Preview not available for this file type</div>
+      <div style="font-size:12px;">Click Download to open in your default application</div>
+    </div>`;
+  }
+  // Setup download button
+  const dlBtn = document.getElementById('contract-file-download-btn');
+  dlBtn.onclick = () => {
+    const a = document.createElement('a');
+    a.href = c.fileData;
+    a.download = c.fileName || 'contract';
+    a.click();
+  };
+  modal.classList.add('open');
 }
 
 function saveTicket() {
@@ -2516,6 +2645,7 @@ function renderContracts() {
       <td>${slaObj?`<span class="badge ${tierColor(slaObj.tier)}">${slaObj.name}</span>`:'<span style="color:var(--text2);font-size:12px">None</span>'}</td>
       <td>${statusBadge(d<0?'expired':c.status)}</td>
       <td><div class="action-btns">
+        ${c.fileData ? `<button class="btn btn-secondary btn-sm" title="View contract file" onclick="viewContractFile(${c.id})">📎</button>` : `<button class="btn btn-secondary btn-sm" title="Attach file" onclick="openModal('contract-modal',${c.id});setTimeout(()=>document.getElementById('ct-file-input').click(),400)" style="opacity:.5">📎</button>`}
         <button class="btn btn-secondary btn-sm" title="Send renewal alert" onclick="openContractEmail(${c.id})">✉️</button>
         <button class="btn btn-secondary btn-sm" onclick="openModal('contract-modal',${c.id})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteContract(${c.id})">🗑️</button>
