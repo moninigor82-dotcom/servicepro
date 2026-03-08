@@ -1495,6 +1495,9 @@ function doGet(e) {
       </div>
       <div class="form-group"><label>Contract Type</label>
         <select id="ct-type">
+          <option>Full Service</option>
+          <option>Support Only</option>
+          <option>Bank Hours</option>
           <option>Including Parts</option>
           <option>Excluding Parts</option>
           <option>Hour Bank</option>
@@ -2022,6 +2025,52 @@ function openModal(id, editId=null) {
       document.getElementById('t-notify-manager').checked=false;
     }
   }
+  if(id==='contract-modal') {
+    if(editId) {
+      const c = contracts.find(x=>x.id==editId);
+      document.getElementById('contract-modal-title').textContent = 'Edit Contract';
+      if(c) {
+        // Set customer dropdown, or show raw name if not in customers list
+        const custSel = document.getElementById('ct-customer');
+        if(c.customerId && custSel.querySelector(`option[value="${c.customerId}"]`)) {
+          custSel.value = c.customerId;
+        } else if(c.customerNameRaw) {
+          // Add a temporary option for the raw customer name
+          let opt = custSel.querySelector(`option[data-raw="1"]`);
+          if(!opt) { opt = document.createElement('option'); opt.setAttribute('data-raw','1'); custSel.appendChild(opt); }
+          opt.value = '__raw__';
+          opt.textContent = c.customerNameRaw;
+          custSel.value = '__raw__';
+        }
+        const ctType = document.getElementById('ct-type');
+        ctType.value = c.type;
+        // If type not in options, add it
+        if(ctType.value !== c.type) {
+          const opt = document.createElement('option');
+          opt.value = c.type; opt.textContent = c.type;
+          ctType.appendChild(opt); ctType.value = c.type;
+        }
+        document.getElementById('ct-start').value = c.start||'';
+        document.getElementById('ct-end').value = c.end||'';
+        document.getElementById('ct-value').value = c.value||'';
+        document.getElementById('ct-status').value = c.status||'active';
+        document.getElementById('ct-includes').value = c.includes||'';
+        const slaSel = document.getElementById('ct-sla');
+        if(slaSel) slaSel.value = c.slaId||'';
+        // Update title with customer name
+        const custName = c.customerNameRaw || (customers.find(x=>x.id==c.customerId)?.name) || '';
+        if(custName) document.getElementById('contract-modal-title').textContent = `Edit Contract — ${custName}`;
+      }
+    } else {
+      document.getElementById('contract-modal-title').textContent = 'New Service Contract';
+      document.getElementById('ct-customer').value='';
+      document.getElementById('ct-start').value='';
+      document.getElementById('ct-end').value='';
+      document.getElementById('ct-value').value='';
+      document.getElementById('ct-status').value='active';
+      document.getElementById('ct-includes').value='';
+    }
+  }
   if(id==='project-modal' && editId) {
     const p = projects.find(x=>x.id==editId);
     document.getElementById('project-modal-title').textContent = 'Edit Project';
@@ -2103,13 +2152,26 @@ function saveCustomer() {
 }
 
 function saveContract() {
-  const cid = document.getElementById('ct-customer').value;
+  const cidRaw = document.getElementById('ct-customer').value;
   const start = document.getElementById('ct-start').value;
   const end = document.getElementById('ct-end').value;
-  if(!cid||!start||!end) return alert('Customer, start and end date are required');
+  if(!cidRaw) return alert('Customer is required');
+  // Preserve existing customerNameRaw if editing and customer is __raw__
+  let customerId = null;
+  let customerNameRaw = null;
+  if(cidRaw === '__raw__') {
+    // Keep existing values from the contract being edited
+    const existing = editingId ? contracts.find(c=>c.id==editingId) : null;
+    customerId = existing?.customerId || null;
+    customerNameRaw = existing?.customerNameRaw || null;
+  } else {
+    customerId = parseInt(cidRaw);
+    customerNameRaw = null;
+  }
   const obj = {
     id: editingId || Date.now(),
-    customerId: parseInt(cid),
+    customerId,
+    customerNameRaw,
     type: document.getElementById('ct-type').value,
     slaId: parseInt(document.getElementById('ct-sla').value)||null,
     start, end,
