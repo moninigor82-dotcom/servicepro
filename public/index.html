@@ -2418,11 +2418,14 @@ function renderCustomers() {
 
 function renderContracts() {
   let list = contracts;
-  if(contractFilter!=='all') {
-    if(contractFilter==='expiring') list = list.filter(c=>{ const d=daysUntil(c.end); return d>=0&&d<=30&&c.status==='active'; });
-    else if(contractFilter==='expired') list = list.filter(c=>c.status==='expired'||daysUntil(c.end)<0);
-    else list = list.filter(c=>c.status===contractFilter);
+  if(contractFilter==='expiring') {
+    list = list.filter(c=>{ const d=daysUntil(c.end); return c.end && d>=0&&d<=30; });
+  } else if(contractFilter==='expired') {
+    list = list.filter(c=>c.end && daysUntil(c.end)<0);
+  } else if(contractFilter==='active') {
+    list = list.filter(c=>!c.end || daysUntil(c.end)>30);
   }
+  // 'all' — show everything
   const tbody = document.getElementById('contracts-tbody');
   tbody.innerHTML = list.length ? list.map(c=>{
     const d = daysUntil(c.end);
