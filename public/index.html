@@ -2580,9 +2580,12 @@ function filterProjects(f, btn) {
 
 function updateBadges() {
   const open = tickets.filter(t=>t.status==='open'||t.status==='in_progress').length;
-  const expiring = contracts.filter(c=>{ const d=daysUntil(c.end); return d>=0&&d<=30&&c.status==='active'; }).length;
+  // Badge = expiring (≤30 days) + expired contracts
+  const expiring = contracts.filter(c=>{ const d=daysUntil(c.end); return d>=0&&d<=30; }).length;
+  const expired = contracts.filter(c=>{ const d=daysUntil(c.end); return d<0; }).length;
+  const contractAlert = expiring + expired;
   document.getElementById('open-badge').textContent = open;
-  document.getElementById('expiring-badge').textContent = expiring;
+  document.getElementById('expiring-badge').textContent = contractAlert || '';
 }
 
 
@@ -2835,15 +2838,10 @@ renderAlerts = function() {
     container.innerHTML = '<div class="empty-state" style="padding:60px;text-align:center"><div style="font-size:50px">✅</div><div style="margin-top:12px;font-size:16px;font-weight:600">No active alerts</div><div style="color:var(--text2);margin-top:6px">Everything is OK!</div></div>';
     return;
   }
-  // Attach contract ids to expiry alerts
-  const contractAlerts = contracts.filter(c=>daysUntil(c.end)<=30).map(c=>({
-    contractId: c.id,
-    endDate: c.end,
-    customerName: getCustomerName(c.customerId, c)
-  }));
   container.innerHTML = alerts.map(a=>{
-    const matchContract = (a.action==='contracts') ? contractAlerts.find(ca=>a.desc?.includes(ca.customerName)) : null;
-    const emailBtn = matchContract ? `<button class="btn btn-primary btn-sm" onclick="openContractEmail(${matchContract.contractId})">✉️ Send Renewal Email</button>` : '';
+    const emailBtn = (a.action==='contracts' && a.contractId)
+      ? `<button class="btn btn-primary btn-sm" onclick="openContractEmail(${a.contractId})">✉️ Send Renewal Email</button>`
+      : '';
     return `
     <div class="alert-item ${a.type}">
       <div class="alert-icon">${a.icon}</div>
@@ -2874,16 +2872,16 @@ function getAlerts() {
     alerts.push({ type:'warning', icon:'🟠', title:`Urgent Ticket: ${t.id}`, desc:`${getCustomerName(t.customerId)} — ${t.subject}`, action:'tickets' });
   });
   // Contracts expiring within 7 days
-  contracts.filter(c=>{ const d=daysUntil(c.end); return d>=0&&d<=7&&c.status==='active'; }).forEach(c=>{
-    alerts.push({ type:'critical', icon:'⚠️', title:`Contract expires in ${daysUntil(c.end)} days!`, desc:`${getCustomerName(c.customerId, c)} — ${c.type}`, action:'contracts' });
+  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d>=0&&d<=7; }).forEach(c=>{
+    alerts.push({ type:'critical', icon:'⚠️', title:`Contract expires in ${daysUntil(c.end)} days!`, desc:`${getCustomerName(c.customerId, c)} — ${c.type}`, action:'contracts', contractId:c.id });
   });
   // Contracts expiring within 30 days
-  contracts.filter(c=>{ const d=daysUntil(c.end); return d>7&&d<=30&&c.status==='active'; }).forEach(c=>{
-    alerts.push({ type:'warning', icon:'📋', title:`Contract expires in ${daysUntil(c.end)} days`, desc:`${getCustomerName(c.customerId, c)} — ${c.type}`, action:'contracts' });
+  contracts.filter(c=>{ const d=daysUntil(c.end); return c.end && d>7&&d<=30; }).forEach(c=>{
+    alerts.push({ type:'warning', icon:'📋', title:`Contract expires in ${daysUntil(c.end)} days`, desc:`${getCustomerName(c.customerId, c)} — ${c.type}`, action:'contracts', contractId:c.id });
   });
-  // Expired contracts
-  contracts.filter(c=>daysUntil(c.end)<0&&c.status==='active').forEach(c=>{
-    alerts.push({ type:'critical', icon:'❌', title:`Contract expired!`, desc:`${getCustomerName(c.customerId, c)} — expired ${-daysUntil(c.end)} days ago`, action:'contracts' });
+  // Expired contracts (by date, regardless of status field)
+  contracts.filter(c=>c.end && daysUntil(c.end)<0).forEach(c=>{
+    alerts.push({ type:'critical', icon:'❌', title:`Contract expired!`, desc:`${getCustomerName(c.customerId, c)} — expired ${-daysUntil(c.end)} days ago`, action:'contracts', contractId:c.id });
   });
   // Projects ending soon
   projects.filter(p=>p.status==='active'&&p.end).forEach(p=>{
